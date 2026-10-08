@@ -1,0 +1,73 @@
+---
+import { getEntry, render } from "astro:content";
+import Page from "../layouts/Page.astro";
+
+interface Props {
+  id: "business" | "privacy";
+}
+
+const entry = await getEntry("legal", Astro.props.id);
+if (!entry)
+  throw new Error(`src/content/legal/${Astro.props.id}.md is missing`);
+const { Content } = await render(entry);
+const { title, description, items } = entry.data;
+---
+
+<Page title={title} description={description}>
+  <article class="legal">
+    <h1 class="title">{title}</h1>
+    {items && (
+      <dl class="items">
+        {items.map(({ label, value }) => (
+          <div class="item">
+            <dt>{label}</dt>
+            <dd>{value}</dd>
+          </div>
+        ))}
+      </dl>
+    )}
+    <div class="body">
+      <Content />
+    </div>
+  </article>
+</Page>
+
+<style>
+  @layer components {
+    .legal {
+      max-inline-size: 48rem;
+      margin-inline: auto;
+      padding-block: var(--space-section);
+      padding-inline: var(--space-gutter);
+    }
+
+    .title {
+      margin-block-end: var(--space-8);
+      font-size: var(--text-xl);
+    }
+
+    .items {
+      border-block-start: var(--border-divider);
+    }
+
+    .item {
+      display: grid;
+      grid-template-columns: minmax(8rem, 14rem) 1fr;
+      gap: var(--space-4);
+      padding-block: var(--space-4);
+      border-block-end: var(--border-divider);
+    }
+
+    .item dt {
+      font-weight: 700;
+    }
+
+    .item dd {
+      margin: 0;
+    }
+
+    .body {
+      margin-block-start: var(--space-8);
+    }
+  }
+</style>
