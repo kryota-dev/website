@@ -17,6 +17,7 @@ const description = Astro.props.description ?? site.data.description;
 ---
 
 <Base title={title} description={description}>
+  <slot name="head" slot="head" />
   <a class="skip-link" href="#main">
     {site.data.skipLink}
   </a>
