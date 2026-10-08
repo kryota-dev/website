@@ -2,14 +2,14 @@
 import Base from "../layouts/Base.astro";
 
 const swatches = [
-  { name: "bg", token: "--color-bg" },
-  { name: "surface", token: "--color-surface" },
-  { name: "text", token: "--color-text" },
-  { name: "muted", token: "--color-muted" },
-  { name: "border", token: "--color-border" },
-  { name: "field-border", token: "--color-field-border" },
-  { name: "accent", token: "--color-accent" },
-  { name: "accent-soft", token: "--color-accent-soft" },
+  "bg",
+  "surface",
+  "text",
+  "muted",
+  "border",
+  "field-border",
+  "accent",
+  "accent-soft",
 ];
 ---
 
@@ -32,13 +32,10 @@ const swatches = [
       <h2 id="color-h" class="section-title">
         <span class="section-number">01</span>色
       </h2>
-      <ul class="swatches">
-        {swatches.map(({ name, token }) => (
+      <ul class="swatches" role="list">
+        {swatches.map((name) => (
           <li class="swatch">
-            <span
-              class="swatch-chip"
-              style={`background-color: var(${token})`}
-            />
+            <span class="swatch-chip" data-token={name}></span>
             <code>{name}</code>
           </li>
         ))}
@@ -95,7 +92,7 @@ const swatches = [
     .section {
       margin-block-start: var(--space-section);
       padding-block-start: var(--space-section);
-      border-block-start: 1px solid var(--color-border);
+      border-block-start: var(--border-divider);
     }
 
     .section-title {
@@ -135,8 +132,41 @@ const swatches = [
     .swatch-chip {
       inline-size: 2.5rem;
       block-size: 2.5rem;
+      flex-shrink: 0;
       border: 1px solid var(--color-field-border);
       border-radius: var(--radius-field);
+    }
+
+    .swatch-chip[data-token="bg"] {
+      background-color: var(--color-bg);
+    }
+
+    .swatch-chip[data-token="surface"] {
+      background-color: var(--color-surface);
+    }
+
+    .swatch-chip[data-token="text"] {
+      background-color: var(--color-text);
+    }
+
+    .swatch-chip[data-token="muted"] {
+      background-color: var(--color-muted);
+    }
+
+    .swatch-chip[data-token="border"] {
+      background-color: var(--color-border);
+    }
+
+    .swatch-chip[data-token="field-border"] {
+      background-color: var(--color-field-border);
+    }
+
+    .swatch-chip[data-token="accent"] {
+      background-color: var(--color-accent);
+    }
+
+    .swatch-chip[data-token="accent-soft"] {
+      background-color: var(--color-accent-soft);
     }
 
     .muted {

@@ -13,7 +13,10 @@
   --color-text: #1f1d19;
   --color-muted: #5b574e;
   --color-border: #ddd6c6; /* decorative dividers only */
-  --color-field-border: #857f71; /* form controls: >= 3:1 */
+
+  /* form controls: >= 3:1 against bg and surface only.
+     Do not place fields on accent-soft (dark: 2.996:1). */
+  --color-field-border: #857f71;
   --color-accent: #2b7350;
   --color-accent-hover: #225e41;
   --color-on-accent: #fff;
@@ -52,6 +55,10 @@
   --space-section: clamp(3.5rem, 8vw, 6.5rem); /* 56-104px */
   --space-gutter: clamp(1rem, 5vw, 3rem); /* 16-48px */
   --content-max: 70rem; /* 1120px */
+
+  /* border */
+  --border-divider: 1px solid var(--color-border);
+  --border-field: 1px solid var(--color-field-border);
 
   /* radius */
   --radius-field: 12px;
