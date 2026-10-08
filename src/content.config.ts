@@ -32,6 +32,17 @@ const site = defineCollection({
     }),
     contactCta: text,
     footer: z.object({ navLabel: text, copyright: text }),
+    seo: z.object({
+      locale: z.string().regex(/^[a-z]{2}_[A-Z]{2}$/),
+      ogImageAlt: text,
+      person: z.object({ name: text, jobTitle: text }),
+      business: z.object({
+        name: text,
+        description: text,
+        addressRegion: text,
+        addressCountry: z.string().regex(/^[A-Z]{2}$/),
+      }),
+    }),
   }),
 });
 
