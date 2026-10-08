@@ -1,6 +1,7 @@
 // @ts-check
 // Two-pass build: collect the characters in use, subset the Japanese font,
-// then build again with the subset. See scripts/subset-fonts.mjs.
+// then build again with the subset (scripts/subset-fonts.mjs). Finally,
+// generate the OGP image (scripts/og-image.mjs).
 // Usage: pnpm build [astro build options]
 import { spawnSync } from "node:child_process";
 import { createRequire } from "node:module";
@@ -52,3 +53,4 @@ function runNode(args, env) {
 runNode([astroCli, "build", ...forwarded], { FONT_PASS: "collect" });
 runNode(["scripts/subset-fonts.mjs"], {});
 runNode([astroCli, "build", ...forwarded], { FONT_PASS: "final" });
+runNode(["scripts/og-image.mjs"], {});

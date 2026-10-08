@@ -56,8 +56,11 @@ export async function collectCharacters(dir = DIST_DIR) {
   return [...chars].sort().join("");
 }
 
-/** @param {Buffer} source */
-function verifySource(source) {
+/**
+ * Fails when the original font differs from the one recorded in SOURCE.md.
+ * @param {Buffer} source
+ */
+export function verifySource(source) {
   const actual = createHash("sha256").update(source).digest("hex");
   if (actual !== NOTO_SOURCE_SHA256) {
     throw new Error(
