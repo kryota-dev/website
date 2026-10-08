@@ -1,0 +1,42 @@
+---
+import { getSingle } from "../lib/content";
+
+const site = (await getSingle("site")).data;
+const profile = (await getSingle("profile")).data;
+if (!Astro.site) throw new Error("`site` must be set in astro.config.mjs");
+const url = new URL("/", Astro.site).href;
+const personId = `${url}#person`;
+const businessId = `${url}#business`;
+
+const graph = {
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Person",
+      "@id": personId,
+      name: site.seo.person.name,
+      jobTitle: site.seo.person.jobTitle,
+      url,
+      sameAs: profile.links.map(({ href }) => href),
+    },
+    {
+      "@type": "ProfessionalService",
+      "@id": businessId,
+      name: site.seo.business.name,
+      description: site.seo.business.description,
+      url,
+      founder: { "@id": personId },
+      address: {
+        "@type": "PostalAddress",
+        addressRegion: site.seo.business.addressRegion,
+        addressCountry: site.seo.business.addressCountry,
+      },
+    },
+  ],
+};
+
+// Escape "<" so the JSON cannot close the script element.
+const json = JSON.stringify(graph).replace(/</g, "\\u003c");
+---
+
+<script type="application/ld+json" set:html={json} />
