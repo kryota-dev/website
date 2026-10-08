@@ -1,0 +1,114 @@
+---
+import { getOrdered, getSingle } from "../lib/content";
+import ThemeSwitcher from "./ThemeSwitcher.astro";
+
+const site = (await getSingle("site")).data;
+const sections = (await getOrdered("sections")).filter(
+  (section) => section.data.id !== "contact",
+);
+---
+
+<header class="header">
+  <a class="logo" href="/">
+    {site.name}
+  </a>
+  <nav class="nav" aria-label={site.nav.label}>
+    <ul class="nav-list" role="list">
+      {sections.map((section) => (
+        <li>
+          <a class="nav-link" href={`/#${section.data.id}`}>
+            {section.data.navLabel}
+          </a>
+        </li>
+      ))}
+    </ul>
+  </nav>
+  <div class="actions">
+    <ThemeSwitcher />
+    <a class="cta" href="/#contact">
+      {site.contactCta}
+    </a>
+  </div>
+</header>
+
+<style>
+  @layer components {
+    .header {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--space-4) var(--space-8);
+      max-inline-size: var(--content-max);
+      margin-inline: auto;
+      padding-block: var(--space-6);
+      padding-inline: var(--space-gutter);
+    }
+
+    .logo {
+      color: var(--color-text);
+      font-family: var(--font-mono);
+      font-size: var(--text-lg);
+      font-weight: 500;
+      letter-spacing: 0;
+      text-decoration: none;
+    }
+
+    .logo:hover {
+      color: var(--color-accent);
+    }
+
+    .nav-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--space-2) var(--space-6);
+      padding: 0;
+      font-size: var(--text-sm);
+      list-style: none;
+    }
+
+    .nav-link {
+      color: var(--color-text);
+      text-decoration: none;
+      background: linear-gradient(var(--color-accent), var(--color-accent))
+        no-repeat 0 100% / 0 1px;
+      transition: background-size var(--duration-base) var(--ease-out);
+    }
+
+    .nav-link:hover {
+      color: var(--color-text);
+      background-size: 100% 1px;
+    }
+
+    .actions {
+      display: flex;
+      align-items: center;
+      gap: var(--space-3);
+    }
+
+    .cta {
+      display: inline-flex;
+      align-items: center;
+      min-block-size: 2.75rem;
+      padding-inline: var(--space-6);
+      border-radius: var(--radius-pill);
+      background-color: var(--color-accent);
+      color: var(--color-on-accent);
+      font-size: var(--text-sm);
+      font-weight: 700;
+      text-decoration: none;
+      transition:
+        background-color var(--duration-fast) var(--ease-out),
+        transform var(--duration-fast) var(--ease-out);
+    }
+
+    .cta:hover {
+      background-color: var(--color-accent-hover);
+      color: var(--color-on-accent);
+    }
+
+    .cta:active {
+      transform: scale(0.97);
+    }
+  }
+</style>

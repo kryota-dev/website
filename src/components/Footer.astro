@@ -1,0 +1,65 @@
+---
+import { getEntry } from "astro:content";
+import { getSingle } from "../lib/content";
+
+const site = (await getSingle("site")).data;
+const legalPages = await Promise.all(
+  (["business", "privacy"] as const).map(async (id) => {
+    const entry = await getEntry("legal", id);
+    if (!entry) throw new Error(`src/content/legal/${id}.md is missing`);
+    return { href: `/${id}/`, label: entry.data.title };
+  }),
+);
+---
+
+<footer class="footer">
+  <p class="copyright">{site.footer.copyright}</p>
+  <nav aria-label={site.footer.navLabel}>
+    <ul class="links" role="list">
+      {legalPages.map(({ href, label }) => (
+        <li>
+          <a href={href}>{label}</a>
+        </li>
+      ))}
+    </ul>
+  </nav>
+</footer>
+
+<style>
+  @layer components {
+    .footer {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      gap: var(--space-4);
+      max-inline-size: var(--content-max);
+      margin-inline: auto;
+      padding-block: var(--space-12);
+      padding-inline: var(--space-gutter);
+      border-block-start: var(--border-divider);
+      color: var(--color-muted);
+      font-size: var(--text-xs);
+    }
+
+    .copyright {
+      font-family: var(--font-mono);
+      letter-spacing: 0;
+    }
+
+    .links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--space-2) var(--space-6);
+      padding: 0;
+      list-style: none;
+    }
+
+    .links a {
+      color: var(--color-muted);
+    }
+
+    .links a:hover {
+      color: var(--color-text);
+    }
+  }
+</style>

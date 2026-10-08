@@ -1,0 +1,56 @@
+---
+import Footer from "../components/Footer.astro";
+import Header from "../components/Header.astro";
+import { getSingle } from "../lib/content";
+import Base from "./Base.astro";
+
+interface Props {
+  title?: string;
+  description?: string;
+}
+
+const site = await getSingle("site");
+const title = Astro.props.title
+  ? `${Astro.props.title} | ${site.data.name}`
+  : site.data.name;
+const description = Astro.props.description ?? site.data.description;
+---
+
+<Base title={title} description={description}>
+  <a class="skip-link" href="#main">
+    {site.data.skipLink}
+  </a>
+  <Header />
+  <main id="main" tabindex="-1">
+    <slot />
+  </main>
+  <Footer />
+</Base>
+
+<style>
+  @layer components {
+    .skip-link {
+      position: absolute;
+      inset-block-start: var(--space-2);
+      inset-inline-start: var(--space-2);
+      z-index: 10;
+      padding: var(--space-2) var(--space-4);
+      border-radius: var(--radius-pill);
+      background-color: var(--color-accent);
+      color: var(--color-on-accent);
+      transform: translateY(-200%);
+    }
+
+    .skip-link:hover {
+      color: var(--color-on-accent);
+    }
+
+    .skip-link:focus-visible {
+      transform: none;
+    }
+
+    main:focus {
+      outline: none;
+    }
+  }
+</style>
