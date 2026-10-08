@@ -1,9 +1,9 @@
 ---
-import { getOrdered, getSingle } from "../lib/content";
+import { getSections, getSingle } from "../lib/content";
 import ThemeSwitcher from "./ThemeSwitcher.astro";
 
 const site = (await getSingle("site")).data;
-const sections = (await getOrdered("sections")).filter(
+const sections = (await getSections()).filter(
   (section) => section.data.id !== "contact",
 );
 ---

@@ -34,13 +34,28 @@ export async function getOrdered<C extends OrderedCollection>(
   );
 }
 
+/** Sections in display order; each section id must appear in exactly one file. */
+export async function getSections(): Promise<CollectionEntry<"sections">[]> {
+  const sections = await getOrdered("sections");
+  const seen = new Map<string, string>();
+  for (const section of sections) {
+    const other = seen.get(section.data.id);
+    if (other) {
+      throw new Error(
+        `Section id "${section.data.id}" is used by both ${other} and ${section.id}`,
+      );
+    }
+    seen.set(section.data.id, section.id);
+  }
+  return sections;
+}
+
 export async function getSection(
   id: CollectionEntry<"sections">["data"]["id"],
 ): Promise<CollectionEntry<"sections">> {
-  const sections = await getCollection("sections");
-  const section = sections.find((entry) => entry.data.id === id);
+  const section = (await getSections()).find((entry) => entry.data.id === id);
   if (!section) {
-    throw new Error(`src/content/sections/${id}.md is missing`);
+    throw new Error(`No file in src/content/sections/ has id "${id}"`);
   }
   return section;
 }

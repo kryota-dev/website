@@ -7,7 +7,16 @@ const fullWidth = new Set(["email", "message"]);
 ---
 
 <Section id="contact">
-  <form class="form" aria-label={contact.formLabel} novalidate>
+  <form
+    class="form"
+    method="post"
+    aria-label={contact.formLabel}
+    aria-describedby="contact-unavailable"
+    novalidate
+  >
+    <p id="contact-unavailable" class="unavailable wide">
+      {contact.unavailable}
+    </p>
     {contact.fields.map((field) => {
       const inputId = `contact-${field.id}`;
       return (
@@ -27,7 +36,7 @@ const fullWidth = new Set(["email", "message"]);
             />
           ) : field.type === "select" ? (
             <select id={inputId} name={field.id} required={field.required}>
-              {field.options?.map((option) => (
+              {field.options.map((option) => (
                 <option>{option}</option>
               ))}
             </select>
@@ -44,9 +53,6 @@ const fullWidth = new Set(["email", "message"]);
       );
     })}
     <div class="submit-row wide">
-      <p id="contact-unavailable" class="unavailable">
-        {contact.unavailable}
-      </p>
       <button
         type="submit"
         class="submit"
