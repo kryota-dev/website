@@ -1,0 +1,30 @@
+---
+import { OG_IMAGE } from "../../scripts/og-settings.mjs";
+import { getSingle } from "../lib/content";
+
+interface Props {
+  title: string;
+  description: string;
+}
+
+const { title, description } = Astro.props;
+const site = (await getSingle("site")).data;
+if (!Astro.site) throw new Error("`site` must be set in astro.config.mjs");
+const canonical = new URL(Astro.url.pathname, Astro.site).href;
+const image = new URL(OG_IMAGE.path, Astro.site).href;
+---
+
+<title>{title}</title>
+<meta name="description" content={description} />
+<link rel="canonical" href={canonical} />
+<meta property="og:type" content="website" />
+<meta property="og:site_name" content={site.name} />
+<meta property="og:locale" content={site.seo.locale} />
+<meta property="og:title" content={title} />
+<meta property="og:description" content={description} />
+<meta property="og:url" content={canonical} />
+<meta property="og:image" content={image} />
+<meta property="og:image:width" content={String(OG_IMAGE.width)} />
+<meta property="og:image:height" content={String(OG_IMAGE.height)} />
+<meta property="og:image:alt" content={site.seo.ogImageAlt} />
+<meta name="twitter:card" content="summary_large_image" />

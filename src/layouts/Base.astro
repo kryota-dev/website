@@ -1,5 +1,6 @@
 ---
 import { Font } from "astro:assets";
+import Seo from "../components/Seo.astro";
 import "../styles/global.css";
 
 interface Props {
@@ -23,12 +24,11 @@ const { title, description } = Astro.props;
       @layer reset, tokens, base, components;
     </style>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>{title}</title>
-    <meta name="description" content={description} />
+    <Seo title={title} description={description} />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <Font cssVariable="--font-noto-sans-jp" preload />
     <Font cssVariable="--font-ibm-plex-mono" />
-    <link rel="canonical" href={new URL(Astro.url.pathname, Astro.site)} />
+    <slot name="head" />
     <script is:inline>
       // Apply the saved theme before first paint to avoid a flash.
       // Keep the storage key in sync with src/scripts/theme.ts.
