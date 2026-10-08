@@ -1,6 +1,7 @@
 // @ts-check
 import { existsSync } from "node:fs";
 import cloudflare from "@astrojs/cloudflare";
+import sitemap from "@astrojs/sitemap";
 import { defineConfig, fontProviders } from "astro/config";
 import { FONT_PASS, NOTO_SOURCE, NOTO_SUBSET } from "./scripts/font-paths.mjs";
 
@@ -52,7 +53,7 @@ export default defineConfig({
   // so the adapter does not add SESSION (KV) or IMAGES bindings.
   session: false,
   adapter: cloudflare({ imageService: "compile" }),
-  integrations: [requireTwoPassBuild],
+  integrations: [requireTwoPassBuild, sitemap()],
   fonts: [
     {
       provider: fontProviders.local(),
