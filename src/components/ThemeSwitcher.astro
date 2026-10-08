@@ -60,15 +60,19 @@ const options = [
     isThemeChoice,
     readThemeChoice,
     saveThemeChoice,
+    type ThemeChoice,
   } from "../scripts/theme";
+
+  /** A transition can be skipped (e.g. switching again before it starts). */
+  const SKIPPED_TRANSITION_ERRORS = new Set([
+    "AbortError",
+    "InvalidStateError",
+  ]);
 
   const prefersReducedMotion = () =>
     window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-  function switchTheme(
-    choice: Parameters<typeof applyThemeChoice>[0],
-    origin: Element,
-  ) {
+  function switchTheme(choice: ThemeChoice, origin: Element) {
     if (prefersReducedMotion() || !document.startViewTransition) {
       applyThemeChoice(choice);
       return;
@@ -77,20 +81,51 @@ const options = [
     const root = document.documentElement;
     root.style.setProperty("--vt-x", `${rect.left + rect.width / 2}px`);
     root.style.setProperty("--vt-y", `${rect.top + rect.height / 2}px`);
-    document.startViewTransition(() => applyThemeChoice(choice));
+    const transition = document.startViewTransition(() =>
+      applyThemeChoice(choice),
+    );
+    transition.ready.catch((error: unknown) => {
+      if (
+        error instanceof DOMException &&
+        SKIPPED_TRANSITION_ERRORS.has(error.name)
+      ) {
+        return;
+      }
+      console.error("Theme transition failed:", error);
+    });
   }
 
-  for (const switcher of document.querySelectorAll("[data-theme-switcher]")) {
+  const switchers = document.querySelectorAll<HTMLElement>(
+    "[data-theme-switcher]",
+  );
+
+  /** Reflects the saved choice in the radios (and the page, when asked). */
+  function syncFromStorage({ apply }: { apply: boolean }) {
     const current = readThemeChoice();
-    for (const input of switcher.querySelectorAll<HTMLInputElement>(
-      "input[name=theme]",
-    )) {
-      input.checked = input.value === current;
+    if (apply) applyThemeChoice(current);
+    for (const switcher of switchers) {
+      for (const input of switcher.querySelectorAll<HTMLInputElement>(
+        "input[name=theme]",
+      )) {
+        input.checked = input.value === current;
+      }
     }
+  }
+
+  syncFromStorage({ apply: false });
+
+  // A page restored from the back/forward cache keeps its old theme;
+  // the choice may have changed on another page in the meantime.
+  window.addEventListener("pageshow", (event) => {
+    if (event.persisted) syncFromStorage({ apply: true });
+  });
+
+  for (const switcher of switchers) {
     switcher.addEventListener("change", (event) => {
       const input = event.target;
       if (!(input instanceof HTMLInputElement) || !isThemeChoice(input.value))
         return;
+      // When storage is unavailable the choice still applies to this page.
       saveThemeChoice(input.value);
       switchTheme(input.value, input.closest("label") ?? input);
     });
@@ -118,6 +153,7 @@ const options = [
       place-items: center;
       inline-size: 2.25rem;
       block-size: 2.25rem;
+      border: 1px solid transparent;
       border-radius: var(--radius-pill);
       color: var(--color-muted);
       cursor: pointer;
@@ -130,9 +166,17 @@ const options = [
       color: var(--color-text);
     }
 
+    /* The border carries the selected state (>= 3:1); the fill is decoration. */
     .option:has(input:checked) {
+      border-color: var(--color-text);
       background-color: var(--color-accent-soft);
       color: var(--color-text);
+    }
+
+    @media (forced-colors: active) {
+      .option:has(input:checked) {
+        border-color: Highlight;
+      }
     }
 
     .option:has(input:focus-visible) {

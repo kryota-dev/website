@@ -1,11 +1,22 @@
 import { expect, test, type Page } from "@playwright/test";
+import { availability } from "./content";
 
-const heroWeight = (page: Page) =>
-  page
-    .locator("#hero-heading")
-    .evaluate((el) =>
+const MIN_WEIGHT = 200;
+const MAX_WEIGHT = 900;
+const REST_WEIGHT = 700;
+const EDGE_TOLERANCE = 10;
+
+const heading = (page: Page) => page.locator("#hero-heading");
+
+const heroWeight = async (page: Page) =>
+  Number(
+    await heading(page).evaluate((el) =>
       getComputedStyle(el).getPropertyValue("--hero-wght").trim(),
-    );
+    ),
+  );
+
+const renderedWeight = async (page: Page) =>
+  Number(await heading(page).evaluate((el) => getComputedStyle(el).fontWeight));
 
 /** Moves the pointer inside the hero; ratio 0 = left edge, 1 = right edge. */
 async function moveAcrossHero(page: Page, ratio: number) {
@@ -14,41 +25,52 @@ async function moveAcrossHero(page: Page, ratio: number) {
   await page.mouse.move(box.x + box.width * ratio, box.y + box.height / 2);
 }
 
-test("ポインターの横位置で wght が 200〜900 に変わり、離れると 700 に戻る", async ({
+test("ポインターの横位置で wght が 200〜900 に変わり、見出しの太さに反映される", async ({
   page,
 }) => {
   await page.emulateMedia({ reducedMotion: "no-preference" });
   await page.goto("/");
-  await moveAcrossHero(page, 0);
+
+  await moveAcrossHero(page, 0.001);
+  await expect.poll(() => heroWeight(page)).toBeGreaterThanOrEqual(MIN_WEIGHT);
+  expect(await heroWeight(page)).toBeLessThanOrEqual(
+    MIN_WEIGHT + EDGE_TOLERANCE,
+  );
+
+  await moveAcrossHero(page, 0.5);
+  await expect.poll(() => heroWeight(page)).toBe((MIN_WEIGHT + MAX_WEIGHT) / 2);
   await expect
-    .poll(async () => Number(await heroWeight(page)))
-    .toBeLessThanOrEqual(210);
+    .poll(() => renderedWeight(page))
+    .toBe((MIN_WEIGHT + MAX_WEIGHT) / 2);
+
   await moveAcrossHero(page, 0.999);
   await expect
-    .poll(async () => Number(await heroWeight(page)))
-    .toBeGreaterThanOrEqual(890);
+    .poll(() => heroWeight(page))
+    .toBeGreaterThanOrEqual(MAX_WEIGHT - EDGE_TOLERANCE);
+  expect(await heroWeight(page)).toBeLessThanOrEqual(MAX_WEIGHT);
+
   await page.mouse.move(1, 1);
-  await expect.poll(() => heroWeight(page)).toBe("700");
+  await expect.poll(() => heroWeight(page)).toBe(REST_WEIGHT);
 });
 
 test("reduced motion では wght が 700 のまま変わらない", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.goto("/");
-  await moveAcrossHero(page, 0);
-  await moveAcrossHero(page, 1);
-  expect(await heroWeight(page)).toBe("700");
+  for (const ratio of [0.1, 0.9]) {
+    await moveAcrossHero(page, ratio);
+    expect(await heroWeight(page)).toBe(REST_WEIGHT);
+    expect(await renderedWeight(page)).toBe(REST_WEIGHT);
+  }
 });
 
-test("空き状況は 1 か所の値が Hero と契約条件の両方に出る", async ({
+test("空き状況は availability/index.md の値が Hero と契約条件の両方に出る", async ({
   page,
 }) => {
+  const { status, statusLabel } = availability();
   await page.goto("/");
-  const heroStatus = (
-    await page.locator("[data-hero] .status").innerText()
-  ).trim();
-  const terms = page.locator("#services dl > div");
-  const statusTerm = terms.filter({
-    has: page.locator("dt", { hasText: "空き状況" }),
-  });
-  await expect(statusTerm.locator("dd")).toHaveText(heroStatus);
+  await expect(page.locator("[data-hero] .status")).toHaveText(status);
+  const term = page
+    .locator("#services dl > div")
+    .filter({ has: page.locator("dt", { hasText: statusLabel }) });
+  await expect(term.locator("dd")).toHaveText(status);
 });

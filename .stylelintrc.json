@@ -24,7 +24,8 @@
           "initial",
           "unset",
           "currentcolor",
-          "transparent"
+          "transparent",
+          "Highlight"
         ],
         "expandShorthand": true,
         "recurseLonghand": true,

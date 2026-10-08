@@ -7,7 +7,15 @@ const markdown = (dir: string) =>
 
 const text = z.string().min(1);
 
-const link = z.object({ label: text, href: text });
+const ALLOWED_LINK_PROTOCOLS = new Set(["https:", "mailto:"]);
+
+const href = z
+  .url()
+  .refine((value) => ALLOWED_LINK_PROTOCOLS.has(new URL(value).protocol), {
+    message: "href must use https: or mailto:",
+  });
+
+const link = z.object({ label: text, href });
 
 const site = defineCollection({
   loader: markdown("site"),
@@ -67,7 +75,7 @@ const works = defineCollection({
     title: text,
     role: text,
     result: text,
-    tech: z.array(text),
+    tech: z.array(text).min(1),
     labels: z.object({ role: text, result: text, tech: text }),
   }),
 });
@@ -98,14 +106,42 @@ const profile = defineCollection({
   }),
 });
 
-const field = z.object({
+const fieldBase = {
   id: z.string().regex(/^[a-z][a-z0-9-]*$/),
   label: text,
-  type: z.enum(["text", "email", "select", "textarea"]),
-  autocomplete: z.string().optional(),
   required: z.boolean().default(false),
-  options: z.array(text).optional(),
-});
+};
+
+const field = z.discriminatedUnion("type", [
+  z.object({
+    ...fieldBase,
+    type: z.enum(["text", "email"]),
+    autocomplete: z.enum(["name", "organization", "email", "tel"]).optional(),
+  }),
+  z.object({ ...fieldBase, type: z.literal("textarea") }),
+  z.object({
+    ...fieldBase,
+    type: z.literal("select"),
+    options: z.array(text).min(1),
+  }),
+]);
+
+const uniqueFieldIds = z
+  .array(field)
+  .min(1)
+  .superRefine((fields, ctx) => {
+    const seen = new Set<string>();
+    fields.forEach((entry, index) => {
+      if (seen.has(entry.id)) {
+        ctx.addIssue({
+          code: "custom",
+          message: `Duplicate field id "${entry.id}"`,
+          path: [index, "id"],
+        });
+      }
+      seen.add(entry.id);
+    });
+  });
 
 const contact = defineCollection({
   loader: markdown("contact"),
@@ -113,7 +149,7 @@ const contact = defineCollection({
     formLabel: text,
     required: text,
     optional: text,
-    fields: z.array(field).min(1),
+    fields: uniqueFieldIds,
     submit: text,
     unavailable: text,
   }),
@@ -124,7 +160,10 @@ const legal = defineCollection({
   schema: z.object({
     title: text,
     description: text,
-    items: z.array(z.object({ label: text, value: text })).optional(),
+    items: z
+      .array(z.object({ label: text, value: text }))
+      .min(1)
+      .optional(),
   }),
 });
 

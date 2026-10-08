@@ -9,8 +9,15 @@ interface Props {
 const entry = await getEntry("legal", Astro.props.id);
 if (!entry)
   throw new Error(`src/content/legal/${Astro.props.id}.md is missing`);
-const { Content } = await render(entry);
 const { title, description, items } = entry.data;
+const source = `src/content/legal/${Astro.props.id}.md`;
+if (Astro.props.id === "business" && !items) {
+  throw new Error(`${source} must list the business items`);
+}
+if (Astro.props.id === "privacy" && !entry.body?.trim()) {
+  throw new Error(`${source} must have a body`);
+}
+const { Content } = await render(entry);
 ---
 
 <Page title={title} description={description}>

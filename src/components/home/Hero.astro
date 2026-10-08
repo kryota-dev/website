@@ -148,7 +148,9 @@ const { Content } = await render(hero);
       block-size: 0.5rem;
       border-radius: var(--radius-pill);
       background-color: var(--color-accent);
-      animation: pulse 2.4s ease-in-out infinite;
+
+      /* Two cycles (4.8s): stops within 5s (WCAG 2.2.2). */
+      animation: pulse 2.4s ease-in-out 2;
     }
 
     @keyframes pulse {
