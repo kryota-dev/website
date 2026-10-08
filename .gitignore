@@ -27,4 +27,5 @@ test-results/
 
 # local-only planning documents (not published)
 .claude/prds/
+.claude/settings.local.json
 .spec-workflow/

@@ -1,6 +1,7 @@
 import { defineConfig, devices } from "@playwright/test";
 
-const PORT = 4321;
+// Not 4321: avoid testing a running `astro dev` server instead of the build.
+const PORT = 4399;
 
 const viewports = {
   mobile: { width: 390, height: 844 },
@@ -26,6 +27,6 @@ export default defineConfig({
   webServer: {
     command: `pnpm exec sirv dist/client --port ${PORT} --quiet`,
     url: `http://localhost:${PORT}`,
-    reuseExistingServer: !process.env.CI,
+    reuseExistingServer: false,
   },
 });

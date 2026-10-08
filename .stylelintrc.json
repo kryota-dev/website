@@ -7,7 +7,9 @@
         "/color$/",
         "fill",
         "stroke",
-        "/^background/",
+        "/^(border|outline)-(block|inline)(-(start|end))?$/",
+        "box-shadow",
+        "text-shadow",
         "/^margin/",
         "/^padding/",
         "/gap$/",
@@ -24,7 +26,8 @@
           "currentcolor",
           "transparent"
         ],
-        "ignoreFunctions": false,
+        "expandShorthand": true,
+        "recurseLonghand": true,
         "disableFix": true
       }
     ]
@@ -32,7 +35,9 @@
   "overrides": [
     {
       "files": ["src/styles/tokens.css", "src/styles/reset.css"],
-      "rules": { "scale-unlimited/declaration-strict-value": null }
+      "rules": {
+        "scale-unlimited/declaration-strict-value": null
+      }
     }
   ]
 }
