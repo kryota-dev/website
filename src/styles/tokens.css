@@ -23,11 +23,11 @@
   --color-accent-soft: #dcebdd;
 
   /* font */
+
+  /* Web fonts come from astro.config.mjs (<Font />), with tuned fallbacks. */
   --font-sans:
-    "Noto Sans JP", "Hiragino Sans", "Hiragino Kaku Gothic ProN",
-    "Yu Gothic UI", system-ui, sans-serif;
-  --font-mono:
-    "IBM Plex Mono", ui-monospace, "SFMono-Regular", menlo, consolas, monospace;
+    var(--font-noto-sans-jp), "Hiragino Sans", "Yu Gothic UI", sans-serif;
+  --font-mono: var(--font-ibm-plex-mono), ui-monospace, monospace;
   --font-system:
     system-ui, -apple-system, "Hiragino Sans", "Yu Gothic UI", sans-serif;
 

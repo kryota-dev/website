@@ -1,4 +1,5 @@
 ---
+import { Font } from "astro:assets";
 import "../styles/global.css";
 
 interface Props {
@@ -25,6 +26,8 @@ const { title, description } = Astro.props;
     <title>{title}</title>
     <meta name="description" content={description} />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <Font cssVariable="--font-noto-sans-jp" preload />
+    <Font cssVariable="--font-ibm-plex-mono" />
     <link rel="canonical" href={new URL(Astro.url.pathname, Astro.site)} />
     <script is:inline>
       // Apply the saved theme before first paint to avoid a flash.
