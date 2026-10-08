@@ -13,6 +13,14 @@ const { title, description } = Astro.props;
 <html lang="ja">
   <head>
     <meta charset="utf-8" />
+    <!--
+      Declare the cascade layer order before any bundled stylesheet.
+      Layer order is fixed by first appearance, and bundled component CSS
+      can load before global.css. Keep in sync with src/styles/global.css.
+    -->
+    <style is:inline>
+      @layer reset, tokens, base, components;
+    </style>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{title}</title>
     <meta name="description" content={description} />
