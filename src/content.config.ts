@@ -36,7 +36,7 @@ const site = defineCollection({
       locale: z.string().regex(/^[a-z]{2}_[A-Z]{2}$/),
       ogImageAlt: text,
       person: z.object({ name: text, jobTitle: text }),
-      business: z.object({
+      organization: z.object({
         name: text,
         description: text,
         addressRegion: text,
