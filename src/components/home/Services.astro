@@ -1,0 +1,104 @@
+---
+import { render } from "astro:content";
+import { getOrdered, getSingle } from "../../lib/content";
+import Section from "./Section.astro";
+
+const services = await Promise.all(
+  (await getOrdered("services")).map(async (entry) => ({
+    ...entry.data,
+    id: entry.id,
+    Content: (await render(entry)).Content,
+  })),
+);
+const availability = (await getSingle("availability")).data;
+const terms = [
+  ...availability.terms,
+  { label: availability.statusLabel, value: availability.status },
+];
+---
+
+<Section id="services">
+  <ul class="cards" role="list">
+    {services.map(({ id, label, title, Content }) => (
+      <li class="card" data-entry={id}>
+        <p class="card-label">{label}</p>
+        <h3 class="card-title">{title}</h3>
+        <div class="card-body">
+          <Content />
+        </div>
+      </li>
+    ))}
+  </ul>
+  <dl class="terms">
+    {terms.map(({ label, value }) => (
+      <div>
+        <dt>{label}</dt>
+        <dd>{value}</dd>
+      </div>
+    ))}
+  </dl>
+</Section>
+
+<style>
+  @layer components {
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+      gap: var(--space-6);
+      padding: 0;
+      list-style: none;
+    }
+
+    .card {
+      padding: var(--space-8);
+      border: var(--border-divider);
+      border-radius: var(--radius-card);
+      background-color: var(--color-surface);
+      transition:
+        transform var(--duration-base) var(--ease-out),
+        border-color var(--duration-base) var(--ease-out);
+    }
+
+    .card:hover {
+      transform: translateY(-4px);
+      border-color: var(--color-accent);
+    }
+
+    .card-label {
+      margin-block-end: var(--space-4);
+      color: var(--color-muted);
+      font-family: var(--font-mono);
+      font-size: var(--text-xs);
+      letter-spacing: 0.04em;
+    }
+
+    .card-title {
+      margin-block-end: var(--space-3);
+      font-size: var(--text-lg);
+    }
+
+    .card-body {
+      color: var(--color-muted);
+      font-size: var(--text-sm);
+    }
+
+    .terms {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+      gap: var(--space-4) var(--space-8);
+      margin-block-start: var(--space-8);
+      padding: var(--space-6) var(--space-8);
+      border-radius: var(--radius-card);
+      background-color: var(--color-accent-soft);
+    }
+
+    .terms dt {
+      font-size: var(--text-xs);
+      font-weight: 700;
+    }
+
+    .terms dd {
+      margin: 0;
+    }
+  }
+</style>

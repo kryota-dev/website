@@ -1,0 +1,139 @@
+---
+import { getSingle } from "../../lib/content";
+import Section from "./Section.astro";
+
+const contact = (await getSingle("contact")).data;
+const fullWidth = new Set(["email", "message"]);
+---
+
+<Section id="contact">
+  <form class="form" aria-label={contact.formLabel} novalidate>
+    {contact.fields.map((field) => {
+      const inputId = `contact-${field.id}`;
+      return (
+        <div class:list={["field", { wide: fullWidth.has(field.id) }]}>
+          <label for={inputId}>
+            {field.label}
+            <span class="requirement">
+              （{field.required ? contact.required : contact.optional}）
+            </span>
+          </label>
+          {field.type === "textarea" ? (
+            <textarea
+              id={inputId}
+              name={field.id}
+              rows={6}
+              required={field.required}
+            />
+          ) : field.type === "select" ? (
+            <select id={inputId} name={field.id} required={field.required}>
+              {field.options?.map((option) => (
+                <option>{option}</option>
+              ))}
+            </select>
+          ) : (
+            <input
+              id={inputId}
+              name={field.id}
+              type={field.type}
+              autocomplete={field.autocomplete}
+              required={field.required}
+            />
+          )}
+        </div>
+      );
+    })}
+    <div class="submit-row wide">
+      <p id="contact-unavailable" class="unavailable">
+        {contact.unavailable}
+      </p>
+      <button
+        type="submit"
+        class="submit"
+        disabled
+        aria-describedby="contact-unavailable"
+      >
+        {contact.submit}
+      </button>
+    </div>
+  </form>
+</Section>
+
+<style>
+  @layer components {
+    .form {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(min(14rem, 100%), 1fr));
+      gap: var(--space-6);
+      max-inline-size: 48rem;
+    }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-2);
+    }
+
+    .wide {
+      grid-column: 1 / -1;
+    }
+
+    label {
+      font-size: var(--text-sm);
+      font-weight: 700;
+    }
+
+    .requirement {
+      color: var(--color-muted);
+      font-weight: 400;
+    }
+
+    input,
+    select,
+    textarea {
+      min-block-size: 3rem;
+      padding-inline: var(--space-4);
+      border: var(--border-field);
+      border-radius: var(--radius-field);
+      background-color: var(--color-surface);
+      color: var(--color-text);
+      font-size: var(--text-md);
+    }
+
+    textarea {
+      padding-block: var(--space-3);
+      line-height: 1.7;
+      resize: vertical;
+    }
+
+    input:focus-visible,
+    select:focus-visible,
+    textarea:focus-visible {
+      border-color: var(--color-accent);
+    }
+
+    .submit-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--space-4);
+    }
+
+    .unavailable {
+      color: var(--color-muted);
+      font-size: var(--text-sm);
+    }
+
+    .submit {
+      min-block-size: 3.25rem;
+      padding-inline: var(--space-8);
+      border: 0;
+      border-radius: var(--radius-pill);
+      background-color: var(--color-border);
+      color: var(--color-muted);
+      font-weight: 700;
+      cursor: not-allowed;
+    }
+  }
+</style>

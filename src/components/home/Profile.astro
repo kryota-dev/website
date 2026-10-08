@@ -1,0 +1,61 @@
+---
+import { render } from "astro:content";
+import { getSingle } from "../../lib/content";
+import Section from "./Section.astro";
+
+const profile = await getSingle("profile");
+const { Content } = await render(profile);
+---
+
+<Section id="profile">
+  <div class="layout">
+    <div class="body">
+      <Content />
+    </div>
+    {profile.data.links.length > 0 && (
+      <ul class="links" role="list" aria-label={profile.data.linksLabel}>
+        {profile.data.links.map(({ label, href }) => (
+          <li>
+            <a class="link" href={href}>
+              {label}
+              <span aria-hidden="true">↗</span>
+            </a>
+          </li>
+        ))}
+      </ul>
+    )}
+  </div>
+</Section>
+
+<style>
+  @layer components {
+    .layout {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--space-8) var(--space-16);
+    }
+
+    .body {
+      flex: 999 1 30rem;
+      min-inline-size: 0;
+    }
+
+    .links {
+      display: flex;
+      flex: 1 1 12rem;
+      flex-direction: column;
+      gap: var(--space-1);
+      padding: 0;
+      list-style: none;
+    }
+
+    .link {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--space-2);
+      min-block-size: 2.75rem;
+      font-family: var(--font-mono);
+      letter-spacing: 0;
+    }
+  }
+</style>
