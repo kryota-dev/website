@@ -179,14 +179,21 @@ async function notoFamily(page: Page): Promise<string> {
  * with the heading's computed font and returns the amount of ink. Glyph advances
  * barely change with weight in Japanese, so ink (stroke thickness) is measured.
  */
-async function heroInkAt(page: Page, weight: number, sample: string) {
+async function heroInkAt(
+  page: Page,
+  family: string,
+  weight: number,
+  sample: string,
+) {
   return page.locator("#hero-heading").evaluate(
-    async (heading, { weight, sample }) => {
+    async (heading, { family, weight, sample }) => {
       heading.style.transition = "none";
       heading.style.setProperty("--hero-wght", String(weight));
       const style = getComputedStyle(heading);
       const font = `${style.fontWeight} 64px ${style.fontFamily}`;
-      await document.fonts.load(font, sample);
+      // Load only the served face: Astro's fallback faces use local() fonts
+      // (e.g. Arial) that may be missing and would reject the whole load.
+      await document.fonts.load(`${style.fontWeight} 64px "${family}"`, sample);
       const canvas = document.createElement("canvas");
       canvas.width = 64 * (sample.length + 1);
       canvas.height = 128;
@@ -203,7 +210,7 @@ async function heroInkAt(page: Page, weight: number, sample: string) {
         variation: style.fontVariationSettings,
       };
     },
-    { weight, sample },
+    { family, weight, sample },
   );
 }
 
@@ -234,7 +241,7 @@ test("Hero の wght の変化が、配信した和文フォントの描画の太
   // 500 identically, so this fails if the wght axis or the hero wiring is lost.
   const results = [];
   for (const weight of [300, 400, 500])
-    results.push(await heroInkAt(page, weight, sample));
+    results.push(await heroInkAt(page, family, weight, sample));
   expect(results.map(({ weight }) => weight)).toEqual(["300", "400", "500"]);
   expect(results.map(({ variation }) => variation)).toEqual([
     '"wght" 300',
