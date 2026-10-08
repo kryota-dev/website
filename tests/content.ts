@@ -22,6 +22,17 @@ export interface SiteContent {
   nav: { label: string };
   theme: { legend: string; light: string; dark: string; system: string };
   contactCta: string;
+  seo: {
+    locale: string;
+    ogImageAlt: string;
+    person: { name: string; jobTitle: string };
+    business: {
+      name: string;
+      description: string;
+      addressRegion: string;
+      addressCountry: string;
+    };
+  };
 }
 
 export interface SectionContent {
