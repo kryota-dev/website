@@ -1,0 +1,38 @@
+{
+  "extends": ["stylelint-config-standard", "stylelint-config-html/astro"],
+  "plugins": ["stylelint-declaration-strict-value"],
+  "rules": {
+    "scale-unlimited/declaration-strict-value": [
+      [
+        "/color$/",
+        "fill",
+        "stroke",
+        "/^background/",
+        "/^margin/",
+        "/^padding/",
+        "/gap$/",
+        "/^inset/"
+      ],
+      {
+        "ignoreValues": [
+          "0",
+          "auto",
+          "none",
+          "inherit",
+          "initial",
+          "unset",
+          "currentcolor",
+          "transparent"
+        ],
+        "ignoreFunctions": false,
+        "disableFix": true
+      }
+    ]
+  },
+  "overrides": [
+    {
+      "files": ["src/styles/tokens.css", "src/styles/reset.css"],
+      "rules": { "scale-unlimited/declaration-strict-value": null }
+    }
+  ]
+}
