@@ -1,0 +1,165 @@
+---
+import { render } from "astro:content";
+import { getSingle } from "../../lib/content";
+
+const hero = await getSingle("hero");
+const availability = (await getSingle("availability")).data;
+const { Content } = await render(hero);
+---
+
+<section class="hero" aria-labelledby="hero-heading" data-hero>
+  <p class="byline">{hero.data.byline}</p>
+  <h1 id="hero-heading" class="heading">
+    {hero.data.heading}
+  </h1>
+  <div class="lead">
+    <Content />
+  </div>
+  <div class="actions">
+    <a class="cta" href="#contact">
+      {hero.data.cta}
+      <span class="arrow" aria-hidden="true">
+        →
+      </span>
+    </a>
+    <p class="status">
+      <span class="dot" aria-hidden="true"></span>
+      {availability.status}
+    </p>
+  </div>
+</section>
+
+<script>
+  const MIN_WEIGHT = 200;
+  const MAX_WEIGHT = 900;
+  const REST_WEIGHT = 700;
+
+  const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+
+  for (const hero of document.querySelectorAll<HTMLElement>("[data-hero]")) {
+    const heading = hero.querySelector<HTMLElement>("h1");
+    if (!heading) continue;
+
+    const setWeight = (weight: number) =>
+      heading.style.setProperty("--hero-wght", String(Math.round(weight)));
+
+    hero.addEventListener("pointermove", (event) => {
+      if (reduceMotion.matches) return;
+      const rect = hero.getBoundingClientRect();
+      const x = Math.min(
+        Math.max((event.clientX - rect.left) / rect.width, 0),
+        1,
+      );
+      setWeight(MIN_WEIGHT + (MAX_WEIGHT - MIN_WEIGHT) * x);
+    });
+    hero.addEventListener("pointerleave", () => setWeight(REST_WEIGHT));
+    reduceMotion.addEventListener("change", () => setWeight(REST_WEIGHT));
+  }
+</script>
+
+<style>
+  @layer components {
+    .hero {
+      max-inline-size: var(--content-max);
+      margin-inline: auto;
+      padding-block: clamp(4rem, 12vw, 10rem) var(--space-section);
+      padding-inline: var(--space-gutter);
+    }
+
+    .byline {
+      margin-block-end: var(--space-6);
+      color: var(--color-muted);
+      font-family: var(--font-mono);
+      font-size: var(--text-xs);
+      letter-spacing: 0.04em;
+    }
+
+    .heading {
+      --hero-wght: 700;
+
+      max-inline-size: 14em;
+      font-size: var(--text-hero);
+      font-weight: var(--hero-wght);
+      font-variation-settings: "wght" var(--hero-wght);
+      letter-spacing: 0.01em;
+      transition:
+        font-weight var(--duration-slow) var(--ease-out),
+        font-variation-settings var(--duration-slow) var(--ease-out);
+    }
+
+    .lead {
+      max-inline-size: 34em;
+      margin-block-start: var(--space-8);
+      color: var(--color-muted);
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: var(--space-4) var(--space-6);
+      margin-block-start: var(--space-12);
+    }
+
+    .cta {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--space-3);
+      min-block-size: 3.25rem;
+      padding-inline: var(--space-8);
+      border-radius: var(--radius-pill);
+      background-color: var(--color-accent);
+      color: var(--color-on-accent);
+      font-weight: 700;
+      text-decoration: none;
+      transition:
+        background-color var(--duration-fast) var(--ease-out),
+        transform var(--duration-fast) var(--ease-out);
+    }
+
+    .cta:hover {
+      background-color: var(--color-accent-hover);
+      color: var(--color-on-accent);
+    }
+
+    .cta:active {
+      transform: scale(0.97);
+    }
+
+    .arrow {
+      display: inline-block;
+      transition: transform var(--duration-base) var(--ease-out);
+    }
+
+    .cta:hover .arrow {
+      transform: translateX(4px);
+    }
+
+    .status {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--space-3);
+      color: var(--color-muted);
+      font-size: var(--text-sm);
+    }
+
+    .dot {
+      inline-size: 0.5rem;
+      block-size: 0.5rem;
+      border-radius: var(--radius-pill);
+      background-color: var(--color-accent);
+      animation: pulse 2.4s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%,
+      100% {
+        box-shadow: var(--ring-rest);
+      }
+
+      50% {
+        box-shadow: var(--ring-pulse);
+      }
+    }
+  }
+</style>

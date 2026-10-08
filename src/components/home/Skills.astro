@@ -1,0 +1,48 @@
+---
+import { getOrdered } from "../../lib/content";
+import Section from "./Section.astro";
+
+const groups = await getOrdered("skills");
+---
+
+<Section id="skills">
+  <div class="groups">
+    {groups.map(({ id, data }) => (
+      <div class="group" data-entry={id}>
+        <h3 class="group-title">{data.group}</h3>
+        <ul class="items" role="list">
+          {data.items.map((item) => (
+            <li>{item}</li>
+          ))}
+        </ul>
+      </div>
+    ))}
+  </div>
+</Section>
+
+<style>
+  @layer components {
+    .groups {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+      gap: var(--space-8) var(--space-12);
+    }
+
+    .group-title {
+      margin-block-end: var(--space-3);
+      padding-block-end: var(--space-3);
+      border-block-end: var(--border-divider);
+      font-family: var(--font-mono);
+      font-size: var(--text-sm);
+      font-weight: 500;
+      letter-spacing: 0;
+    }
+
+    .items {
+      padding: 0;
+      font-size: var(--text-sm);
+      line-height: 2.1;
+      list-style: none;
+    }
+  }
+</style>

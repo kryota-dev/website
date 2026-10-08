@@ -1,0 +1,81 @@
+---
+import { render } from "astro:content";
+import { getSection } from "../../lib/content";
+
+interface Props {
+  id: "services" | "works" | "skills" | "profile" | "contact";
+}
+
+const section = await getSection(Astro.props.id);
+const { id, order, label, heading } = section.data;
+const { Content } = await render(section);
+const headingId = `${id}-heading`;
+---
+
+<section class="section" id={id} aria-labelledby={headingId}>
+  <div class="heading-row">
+    <span class="number" aria-hidden="true">
+      {String(order).padStart(2, "0")}
+    </span>
+    <h2 id={headingId} class="heading">
+      {heading}
+    </h2>
+    <span class="label" aria-hidden="true">
+      {label}
+    </span>
+  </div>
+  {section.body?.trim() && (
+    <div class="description">
+      <Content />
+    </div>
+  )}
+  <slot />
+</section>
+
+<style>
+  @layer components {
+    .section {
+      max-inline-size: var(--content-max);
+      margin-inline: auto;
+      padding-block: var(--space-section);
+      padding-inline: var(--space-gutter);
+      border-block-start: var(--border-divider);
+      scroll-margin-block-start: var(--space-4);
+    }
+
+    .heading-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: baseline;
+      gap: var(--space-2) var(--space-6);
+      margin-block-end: var(--space-8);
+    }
+
+    .number {
+      color: var(--color-accent);
+      font-family: var(--font-mono);
+      font-size: var(--text-sm);
+      font-weight: 500;
+      letter-spacing: 0;
+    }
+
+    .heading {
+      font-size: var(--text-xl);
+      font-weight: 700;
+      letter-spacing: 0.01em;
+    }
+
+    .label {
+      color: var(--color-muted);
+      font-family: var(--font-mono);
+      font-size: var(--text-sm);
+      letter-spacing: 0;
+    }
+
+    .description {
+      max-inline-size: 40em;
+      margin-block-end: var(--space-8);
+      color: var(--color-muted);
+    }
+  }
+</style>
