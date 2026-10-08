@@ -39,7 +39,13 @@ for (const path of pages) {
     await page.evaluate(async (theme) => {
       document.documentElement.dataset.theme = theme;
       // Let color transitions settle so axe measures the final colors.
-      await Promise.all(document.getAnimations().map((a) => a.finished));
+      // Only transitions: decorative animations may loop forever.
+      await Promise.all(
+        document
+          .getAnimations()
+          .filter((animation) => animation instanceof CSSTransition)
+          .map((animation) => animation.finished),
+      );
     }, opposite);
     await expectNoViolations(page);
   });
