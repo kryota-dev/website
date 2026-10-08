@@ -5,10 +5,12 @@ import Profile from "../components/home/Profile.astro";
 import Services from "../components/home/Services.astro";
 import Skills from "../components/home/Skills.astro";
 import Works from "../components/home/Works.astro";
+import StructuredData from "../components/StructuredData.astro";
 import Page from "../layouts/Page.astro";
 ---
 
 <Page>
+  <StructuredData slot="head" />
   <Hero />
   <Services />
   <Works />
