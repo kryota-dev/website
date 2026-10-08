@@ -56,3 +56,33 @@ select {
     transition-duration: 0.01ms !important;
   }
 }
+
+.visually-hidden {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* Theme switch: reveal the new theme in a circle from the control. */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+
+::view-transition-new(root) {
+  animation: theme-reveal var(--duration-slow) var(--ease-out);
+}
+
+@keyframes theme-reveal {
+  from {
+    clip-path: circle(0 at var(--vt-x, 50%) var(--vt-y, 0));
+  }
+
+  to {
+    clip-path: circle(150% at var(--vt-x, 50%) var(--vt-y, 0));
+  }
+}
