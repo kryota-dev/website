@@ -74,16 +74,42 @@ test.describe("表示される文字", () => {
   }
 });
 
-async function headingWidthAt(page: Page, weight: number) {
-  return page.locator("#hero-heading").evaluate(async (el, value) => {
-    el.style.transition = "none";
-    el.style.setProperty("--hero-wght", String(value));
-    await document.fonts.ready;
-    // Measure the text itself: the block box spans the container regardless.
-    const range = document.createRange();
-    range.selectNodeContents(el);
-    return range.getBoundingClientRect().width;
-  }, weight);
+/**
+ * Draws text with the given family at each weight and returns the amount of ink.
+ * Glyph advances barely change with weight in Japanese (full-width), so width is
+ * not a reliable signal; stroke thickness (ink) is.
+ */
+async function inkAtWeights(page: Page, family: string, weights: number[]) {
+  return page.evaluate(
+    async ({ family, weights }) => {
+      const SAMPLE = "永あア漢";
+      const SIZE = 64;
+      const canvas = document.createElement("canvas");
+      canvas.width = SIZE * SAMPLE.length + SIZE;
+      canvas.height = SIZE * 2;
+      const context = canvas.getContext("2d", { willReadFrequently: true });
+      if (!context) throw new Error("2D canvas is unavailable");
+      const result: number[] = [];
+      for (const weight of weights) {
+        const font = `${weight} ${SIZE}px "${family}"`;
+        await document.fonts.load(font, SAMPLE);
+        context.clearRect(0, 0, canvas.width, canvas.height);
+        context.font = font;
+        context.fillText(SAMPLE, SIZE / 2, SIZE * 1.5);
+        const { data } = context.getImageData(
+          0,
+          0,
+          canvas.width,
+          canvas.height,
+        );
+        let ink = 0;
+        for (let i = 3; i < data.length; i += 4) ink += data[i];
+        result.push(ink);
+      }
+      return result;
+    },
+    { family, weights },
+  );
 }
 
 test("Hero の見出しは和文フォントで描画され、wght の変化が太さに連続的に反映される", async ({
@@ -91,23 +117,28 @@ test("Hero の見出しは和文フォントで描画され、wght の変化が�
 }) => {
   await page.goto("/");
   await page.evaluate(() => document.fonts.ready);
-  const loaded = await page.evaluate(
-    (family) =>
-      [...document.fonts].some(
-        (face) =>
-          face.family.replace(/"/g, "").startsWith(`${family}-`) &&
-          face.status === "loaded",
-      ),
-    NOTO_FAMILY,
-  );
-  expect(loaded).toBe(true);
+  const family = await page.evaluate((name) => {
+    const face = [...document.fonts].find(
+      (f) =>
+        f.family.replace(/"/g, "").startsWith(`${name}-`) &&
+        !f.family.includes("fallback") &&
+        f.status === "loaded",
+    );
+    return face?.family.replace(/"/g, "") ?? null;
+  }, NOTO_FAMILY);
+  expect(family).not.toBeNull();
 
-  // A variable font changes width at every step; a system font with a few
-  // fixed weights would render some of these steps identically.
-  const widths = [];
-  for (const weight of [300, 400, 500]) {
-    widths.push(await headingWidthAt(page, weight));
-  }
-  expect(widths[1]).toBeGreaterThan(widths[0]);
-  expect(widths[2]).toBeGreaterThan(widths[1]);
+  const headingFamily = await page
+    .locator("#hero-heading")
+    .evaluate((el) =>
+      getComputedStyle(el).fontFamily.split(",")[0].replace(/"/g, "").trim(),
+    );
+  expect(headingFamily).toBe(family);
+
+  // The face is the served subset itself (unique, hashed family name). A variable
+  // face thickens at every step; a static (non-variable) face renders 300, 400
+  // and 500 identically, so this fails if the wght axis is lost.
+  const ink = await inkAtWeights(page, family!, [300, 400, 500]);
+  expect(ink[1]).toBeGreaterThan(ink[0]);
+  expect(ink[2]).toBeGreaterThan(ink[1]);
 });
