@@ -24,10 +24,9 @@
 
   /* font */
 
-  /* Web fonts come from astro.config.mjs (<Font />), with tuned fallbacks. */
-  --font-sans:
-    var(--font-noto-sans-jp), "Hiragino Sans", "Yu Gothic UI", sans-serif;
-  --font-mono: var(--font-ibm-plex-mono), ui-monospace, monospace;
+  /* Web fonts and their fallbacks come from astro.config.mjs (<Font />). */
+  --font-sans: var(--font-noto-sans-jp);
+  --font-mono: var(--font-ibm-plex-mono);
   --font-system:
     system-ui, -apple-system, "Hiragino Sans", "Yu Gothic UI", sans-serif;
 
