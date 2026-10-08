@@ -1,0 +1,30 @@
+# build output
+dist/
+.astro/
+.wrangler/
+
+# dependencies
+node_modules/
+
+# generated types
+worker-configuration.d.ts
+
+# test reports
+playwright-report/
+test-results/
+.lighthouseci/
+
+# environment
+.env
+.env.*
+.dev.vars*
+
+# logs
+*.log
+
+# OS
+.DS_Store
+
+# local-only planning documents (not published)
+.claude/prds/
+.spec-workflow/
