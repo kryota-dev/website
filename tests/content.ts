@@ -18,6 +18,7 @@ export function readFrontmatter<T>(file: string): T {
 
 export interface SiteContent {
   name: string;
+  description: string;
   skipLink: string;
   nav: { label: string };
   theme: { legend: string; light: string; dark: string; system: string };
@@ -26,7 +27,7 @@ export interface SiteContent {
     locale: string;
     ogImageAlt: string;
     person: { name: string; jobTitle: string };
-    business: {
+    organization: {
       name: string;
       description: string;
       addressRegion: string;
@@ -66,3 +67,18 @@ export function sections(): SectionContent[] {
     .map((file) => readFrontmatter<SectionContent>(join("sections", file)))
     .sort((a, b) => a.order - b.order);
 }
+
+export interface ProfileContent {
+  links: { label: string; href: string }[];
+}
+
+export interface LegalContent {
+  title: string;
+  description: string;
+}
+
+export const profile = () =>
+  readFrontmatter<ProfileContent>("profile/index.md");
+
+export const legal = (id: "business" | "privacy") =>
+  readFrontmatter<LegalContent>(`legal/${id}.md`);

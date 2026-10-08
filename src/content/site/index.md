@@ -20,7 +20,7 @@ seo:
   person:
     name: "[氏名]"
     jobTitle: "[肩書き]"
-  business:
+  organization:
     name: "[屋号]"
     description: "[事業の説明]"
     addressRegion: "[都道府県]"
