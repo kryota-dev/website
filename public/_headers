@@ -1,0 +1,14 @@
+# Security headers for every static asset (Workers Static Assets).
+# Content-Security-Policy is added to this rule at build time by scripts/csp.mjs,
+# because its hashes depend on the inline scripts and styles in the output.
+/*
+  Strict-Transport-Security: max-age=31536000
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), geolocation=(), microphone=(), payment=(), usb=()
+  Cross-Origin-Opener-Policy: same-origin
+
+# Keep the workers.dev hosts (production and Previews) out of search results;
+# the custom domain is the canonical URL.
+https://:worker.:subdomain.workers.dev/*
+  X-Robots-Tag: noindex
