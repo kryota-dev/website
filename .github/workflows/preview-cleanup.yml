@@ -1,7 +1,10 @@
 name: Preview cleanup
 
+# pull_request_target also runs for pull requests with merge conflicts, which
+# pull_request skips. It runs the base branch's workflow and code; nothing
+# from the pull request is checked out or executed here.
 on:
-  pull_request:
+  pull_request_target:
     types: [closed]
 
 permissions:
@@ -14,6 +17,11 @@ jobs:
     if: github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    environment: preview
+    # Shared with the preview job in ci.yml; see there.
+    concurrency:
+      group: preview-${{ github.event.pull_request.number }}
+      cancel-in-progress: false
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
@@ -26,8 +34,9 @@ jobs:
           node-version-file: .node-version
           cache: pnpm
 
+      # Only wrangler is needed here; no install scripts run next to the token.
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: pnpm install --frozen-lockfile --ignore-scripts
 
       - name: Delete the Preview
         run: pnpm exec wrangler preview delete --name "pr-${PR_NUMBER}" --skip-confirmation
