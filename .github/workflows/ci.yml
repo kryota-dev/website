@@ -10,7 +10,9 @@ permissions:
 
 concurrency:
   group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  # Newer pushes to a pull request supersede older runs, but a production
+  # deployment that has passed the gates is never cancelled midway.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   ci:
@@ -84,10 +86,26 @@ jobs:
     if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    environment: preview
+    # Shared with preview-cleanup.yml, so a Preview is never created after
+    # the pull request has been closed and its Preview deleted.
+    concurrency:
+      group: preview-${{ github.event.pull_request.number }}
+      cancel-in-progress: false
     permissions:
       contents: read
       pull-requests: write
     steps:
+      - id: state
+        name: Check that the pull request is still open
+        run: |
+          state="$(gh pr view "$PR_NUMBER" --json state --jq .state)"
+          echo "open=$([ "$state" = OPEN ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
@@ -99,8 +117,9 @@ jobs:
           node-version-file: .node-version
           cache: pnpm
 
+      # Only wrangler is needed here; no install scripts run next to the token.
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: pnpm install --frozen-lockfile --ignore-scripts
 
       - name: Download the build
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
@@ -109,11 +128,16 @@ jobs:
 
       - id: preview
         name: Create or update the Preview
+        if: steps.state.outputs.open == 'true'
         # Read the URL from Wrangler's machine-readable output file rather than
         # stdout, which also carries the upload logs.
         run: |
           pnpm exec wrangler preview --name "pr-${PR_NUMBER}"
           preview_url="$(jq -ser 'map(select(.type == "preview")) | last | .preview_urls[0]' "$WRANGLER_OUTPUT_FILE_PATH")"
+          [[ "$preview_url" =~ ^https://[A-Za-z0-9.-]+\.workers\.dev/?$ ]] || {
+            echo "Unexpected Preview URL: $preview_url" >&2
+            exit 1
+          }
           echo "url=$preview_url" >> "$GITHUB_OUTPUT"
         env:
           PR_NUMBER: ${{ github.event.pull_request.number }}
@@ -122,13 +146,26 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
       - name: Check the security headers
+        if: steps.state.outputs.open == 'true'
         run: node scripts/check-deployed-headers.mjs "$PREVIEW_URL"
         env:
           PREVIEW_URL: ${{ steps.preview.outputs.url }}
 
+      # Update the comment that carries the marker, so other comments by
+      # github-actions are never overwritten.
       - name: Comment the Preview URL
+        if: steps.state.outputs.open == 'true'
         run: |
-          gh pr comment "$PR_NUMBER" --edit-last --create-if-none --body "Preview: ${PREVIEW_URL} (${HEAD_SHA})"
+          marker="<!-- preview-url -->"
+          body="${marker}
+          Preview: ${PREVIEW_URL} (${HEAD_SHA})"
+          id="$(gh api "repos/${GH_REPO}/issues/${PR_NUMBER}/comments" --paginate \
+            --jq ".[] | select(.user.login == \"github-actions[bot]\" and (.body | startswith(\"${marker}\"))) | .id" | sed -n 1p)"
+          if [ -n "$id" ]; then
+            gh api --method PATCH "repos/${GH_REPO}/issues/comments/${id}" -f body="$body" > /dev/null
+          else
+            gh api "repos/${GH_REPO}/issues/${PR_NUMBER}/comments" -f body="$body" > /dev/null
+          fi
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
@@ -142,6 +179,8 @@ jobs:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    # The production token lives in this environment, which only main can use.
+    environment: production
     permissions:
       contents: read
     steps:
@@ -156,8 +195,9 @@ jobs:
           node-version-file: .node-version
           cache: pnpm
 
+      # Only wrangler is needed here; no install scripts run next to the token.
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: pnpm install --frozen-lockfile --ignore-scripts
 
       - name: Download the build
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8

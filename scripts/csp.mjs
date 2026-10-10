@@ -15,19 +15,53 @@ const DIST_DIR = "dist/client";
 export const MAX_HEADERS_LINE_LENGTH = 2000;
 
 /**
- * Script types the browser runs, so CSP applies to them. Anything else
- * (e.g. application/ld+json) is a data block and needs no hash.
+ * JavaScript MIME type essences (MIME Sniffing Standard). A classic script
+ * runs when its type essence is one of these.
  */
-const EXECUTABLE_SCRIPT_TYPES = new Set([
-  "",
+const JAVASCRIPT_MIME_TYPES = new Set([
+  "application/ecmascript",
+  "application/javascript",
+  "application/x-ecmascript",
+  "application/x-javascript",
+  "text/ecmascript",
+  "text/javascript",
+  "text/javascript1.0",
+  "text/javascript1.1",
+  "text/javascript1.2",
+  "text/javascript1.3",
+  "text/javascript1.4",
+  "text/javascript1.5",
+  "text/jscript",
+  "text/livescript",
+  "text/x-ecmascript",
+  "text/x-javascript",
+]);
+
+/** Non-classic script types that the browser also runs. */
+const OTHER_EXECUTABLE_TYPES = new Set([
   "module",
   "importmap",
   "speculationrules",
-  "text/javascript",
-  "application/javascript",
-  "application/ecmascript",
-  "text/ecmascript",
 ]);
+
+/**
+ * Whether a script element runs, so that CSP applies to it. Follows the
+ * type / language rules of "prepare the script element" (HTML Standard);
+ * anything else (e.g. application/ld+json) is a data block.
+ * @param {Record<string, string>} attributes
+ */
+export function isExecutableScript({ type, language }) {
+  const typeString =
+    type !== undefined
+      ? type
+      : language !== undefined && language !== ""
+        ? `text/${language}`
+        : "";
+  const value = typeString.trim().toLowerCase();
+  if (value === "") return true;
+  if (OTHER_EXECUTABLE_TYPES.has(value)) return true;
+  return JAVASCRIPT_MIME_TYPES.has(value.split(";")[0].trim());
+}
 
 /** @param {string} text */
 function sha256(text) {
@@ -52,10 +86,8 @@ export function inlineHashes(html) {
       if (name === "style") {
         current = { list: styles, text: "" };
       } else if (name === "script") {
-        const type = (attributes.type ?? "").trim().toLowerCase();
-        const runs = EXECUTABLE_SCRIPT_TYPES.has(type);
         current =
-          runs && attributes.src === undefined
+          isExecutableScript(attributes) && attributes.src === undefined
             ? { list: scripts, text: "" }
             : undefined;
       }
@@ -70,7 +102,8 @@ export function inlineHashes(html) {
       }
     },
   });
-  parser.write(html);
+  // Browsers normalize CRLF and CR to LF before parsing, and hash the result.
+  parser.write(html.replace(/\r\n?/g, "\n"));
   parser.end();
   return { scripts, styles };
 }
