@@ -3,6 +3,10 @@
   "compatibility_date": "2026-10-06",
   "compatibility_flags": ["global_fetch_strictly_public"],
   "name": "kryota-dev-website",
+  // Serve production on workers.dev and Previews on their workers.dev URLs.
+  // The custom domain (kryota.dev) is attached when the content is ready.
+  "workers_dev": true,
+  "preview_urls": true,
   "main": "@astrojs/cloudflare/entrypoints/server",
   "assets": {
     "directory": "./dist",
