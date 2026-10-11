@@ -19,7 +19,8 @@
     "format:check": "prettier --check .",
     "test:a11y": "playwright test",
     "test:lighthouse": "lhci autorun",
-    "test:html": "html-validate --config .htmlvalidate.mjs --max-warnings 0 dist/client"
+    "test:html": "html-validate --config .htmlvalidate.mjs --max-warnings 0 dist/client",
+    "test:links": "node scripts/check-links.mjs"
   },
   "dependencies": {
     "@astrojs/cloudflare": "^14.3.4",
