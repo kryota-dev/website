@@ -1,6 +1,6 @@
 ---
 name: kryota.dev
-description: "[サイトの説明]"
+description: "ソフトウェアエンジニア Ryota Kaneko（金子 凌大）のポートフォリオ。Web アプリ、AI エージェント、企業サイトの開発実績を紹介しています。"
 skipLink: 本文へ移動
 nav:
   label: メイン
@@ -13,13 +13,12 @@ footer:
   navLabel: サイト情報
   copyright: © kryota.dev
 seo:
-  # locale と国コードは機能的な値。それ以外はダミー
   locale: ja_JP
-  ogImageAlt: "[OGP 画像の代替テキスト]"
+  ogImageAlt: "kryota.dev / Ryota Kaneko — Software Engineer / 誰かの手元で、ちゃんと動くものを。"
   person:
-    name: "[氏名]"
-    alternateName: "[別名]"
-    jobTitle: "[肩書き]"
-    addressRegion: "[都道府県]"
+    name: Ryota Kaneko
+    alternateName: 金子 凌大
+    jobTitle: Software Engineer
+    addressRegion: 京都府
     addressCountry: JP
 ---
