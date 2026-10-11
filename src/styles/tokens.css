@@ -49,11 +49,11 @@
   --space-6: 1.5rem; /* 24px */
   --space-8: 2rem; /* 32px */
   --space-12: 3rem; /* 48px */
-  --space-16: 4rem; /* 64px */
   --space-24: 6rem; /* 96px */
   --space-section: clamp(3.5rem, 8vw, 6.5rem); /* 56-104px */
   --space-gutter: clamp(1rem, 5vw, 3rem); /* 16-48px */
   --content-max: 70rem; /* 1120px */
+  --measure-body: 40em; /* line length of running text */
 
   /* border */
   --border-divider: 1px solid var(--color-border);

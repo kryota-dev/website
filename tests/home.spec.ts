@@ -1,44 +1,73 @@
-import { expect, test } from "@playwright/test";
-import { profile, sections, works } from "./content";
+import { expect, test, type Locator, type Page } from "@playwright/test";
+import { markdownLinks, profile, readBody, skills, works } from "./content";
+import { listBuiltPages } from "./pages";
+
+/** Fixed by the requirements (AC-001), not read from the content. */
+const SECTION_ORDER = ["hero", "profile", "works", "skills", "contact"];
 
 test.beforeEach(async ({ page }) => {
   await page.goto("/");
 });
 
-test("セクションはコンテンツの順番どおりに並ぶ", async ({ page }) => {
+/** The ↗ marker that base.css adds after a link that leaves the site. */
+async function expectExternalMarker(link: Locator, name: string) {
+  const marker = await link.evaluate((el) => {
+    const style = getComputedStyle(el, "::after");
+    return {
+      content: style.content,
+      display: style.display,
+      visibility: style.visibility,
+    };
+  });
+  expect(marker.content).toContain("↗");
+  expect(marker.display).not.toBe("none");
+  expect(marker.visibility).toBe("visible");
+  await expect(link).toHaveAccessibleName(name);
+}
+
+test("セクションは Hero → Profile → Works → Skills → Contact の順に並ぶ", async ({
+  page,
+}) => {
   const ids = await page
-    .locator("main > section[id]")
-    .evaluateAll((list) => list.map((section) => section.id));
-  expect(ids).toEqual(sections().map(({ id }) => id));
+    .locator("main > section")
+    .evaluateAll((list) =>
+      list.map((section) =>
+        section.hasAttribute("data-hero") ? "hero" : section.id,
+      ),
+    );
+  expect(ids).toEqual(SECTION_ORDER);
 });
 
 test.describe("Contact", () => {
-  const contact = (page: import("@playwright/test").Page) =>
-    page.locator("#contact");
+  const contact = (page: Page) => page.locator("#contact");
 
-  test("フォームを持たない", async ({ page }) => {
-    await expect(contact(page).locator("form, input, textarea")).toHaveCount(0);
-  });
-
-  test("外部リンクには ↗ が見え、リンクの名前には含まれない", async ({
+  test("ページのどこにもフォームと入力欄が無く、Contact にボタンも無い", async ({
     page,
   }) => {
-    const links = contact(page).locator('a[href^="https://"]');
-    expect(await links.count()).toBeGreaterThan(0);
-    for (const link of await links.all()) {
-      const marker = await link.evaluate(
-        (el) => getComputedStyle(el, "::after").content,
-      );
-      expect(marker).toContain("↗");
-      const text = (await link.textContent())?.trim() ?? "";
-      await expect(link).toHaveAccessibleName(text);
+    await expect(
+      page.locator("form, input:not([type=radio]), textarea, select"),
+    ).toHaveCount(0);
+    await expect(contact(page).getByRole("button")).toHaveCount(0);
+  });
+
+  test("本文のリンクがそのまま並び、外部リンクには ↗ が付いて名前には含まれない", async ({
+    page,
+  }) => {
+    const expected = markdownLinks(readBody("sections/contact.md"));
+    expect(expected.length).toBeGreaterThan(0);
+    const links = contact(page).getByRole("link");
+    await expect(links).toHaveCount(expected.length);
+    for (const [index, { label, href }] of expected.entries()) {
+      const link = links.nth(index);
+      await expect(link).toHaveAttribute("href", href);
+      await expectExternalMarker(link, label);
       // Same tab, like the other links on the site.
-      await expect(link).not.toHaveAttribute("target");
+      expect((await link.getAttribute("target")) ?? "_self").toBe("_self");
     }
   });
 });
 
-test("Works のカードは新しい順に、概要・役割・主な取り組み・技術スタックを持つ", async ({
+test("Works のカードは新しい順に、業種・期間・見出し・概要・役割・主な取り組み・技術スタックを持つ", async ({
   page,
 }) => {
   const cards = page.locator("#works .card");
@@ -47,31 +76,49 @@ test("Works のカードは新しい順に、概要・役割・主な取り組�
   for (const [index, work] of expected.entries()) {
     const card = cards.nth(index);
     await expect(card).toHaveAttribute("data-entry", work.id);
+    await expect(card.locator(".meta")).toHaveText(
+      `${work.industry}${work.period}`,
+    );
     await expect(card.getByRole("heading", { level: 3 })).toHaveText(
       work.title,
     );
-    await expect(card.locator(".summary")).not.toBeEmpty();
-    const fact = (label: string) =>
-      card.locator(".fact").filter({
-        has: page.locator("dt", { hasText: new RegExp(`^${label}$`) }),
-      });
-    const role = fact(work.labels.role);
-    await expect(role.locator("dd")).toHaveText(work.role);
-    const highlights = fact(work.labels.highlights).getByRole("listitem");
-    await expect(highlights).toHaveText(work.highlights);
+    await expect(card.locator(".summary")).toHaveText(work.body);
+    await expect(card.locator(".facts dt")).toHaveText([work.labels.role]);
+    await expect(card.locator(".facts dd")).toHaveText([work.role]);
+    await expect(
+      card.getByRole("heading", { level: 4, name: work.labels.highlights }),
+    ).toBeVisible();
+    await expect(card.locator(".highlights li")).toHaveText(work.highlights);
     await expect(
       card.getByRole("list", { name: work.labels.tech }).getByRole("listitem"),
     ).toHaveText(work.tech);
   }
 });
 
-test("Profile は資格・活動・外部リンクを、見出しの下にデータの順で並べる", async ({
+test("Profile は職務要約の後に、資格・活動・外部リンクをデータの順で並べる", async ({
   page,
 }) => {
   const content = profile();
   const section = page.locator("#profile");
+  await expect(section.locator(".summary")).toHaveText(
+    readBody("profile/index.md"),
+  );
+
+  // Only the blocks that have entries are shown, in this order.
+  const blocks = [
+    {
+      label: content.qualificationsLabel,
+      count: content.qualifications.length,
+    },
+    { label: content.activitiesLabel, count: content.activities.length },
+    { label: content.linksLabel, count: content.links.length },
+  ].filter(({ count }) => count > 0);
+  await expect(section.getByRole("heading", { level: 3 })).toHaveText(
+    blocks.map(({ label }) => label),
+  );
+
   const block = (label: string) =>
-    section.locator(".block").filter({
+    section.locator(".blocks > div").filter({
       has: page.getByRole("heading", { level: 3, name: label, exact: true }),
     });
 
@@ -94,7 +141,34 @@ test("Profile は資格・活動・外部リンクを、見出しの下にデー
   const links = block(content.linksLabel).getByRole("link");
   await expect(links).toHaveCount(content.links.length);
   for (const [index, { label, href }] of content.links.entries()) {
-    await expect(links.nth(index)).toHaveAccessibleName(label);
     await expect(links.nth(index)).toHaveAttribute("href", href);
+    if (href.startsWith("https://")) {
+      await expectExternalMarker(links.nth(index), label);
+    } else {
+      await expect(links.nth(index)).toHaveAccessibleName(label);
+    }
   }
+});
+
+test("Skills はカテゴリごとに、見出しと技術をデータの順で並べる", async ({
+  page,
+}) => {
+  const groups = page.locator("#skills .group");
+  const expected = skills();
+  await expect(groups).toHaveCount(expected.length);
+  for (const [index, { group, items }] of expected.entries()) {
+    await expect(
+      groups.nth(index).getByRole("heading", { level: 3 }),
+    ).toHaveText(group);
+    await expect(groups.nth(index).getByRole("listitem")).toHaveText(items);
+  }
+});
+
+test("フッターにはプライバシーポリシーへのリンクだけがあり、ページは / と /privacy/ だけ", async ({
+  page,
+}) => {
+  const links = page.getByRole("contentinfo").getByRole("link");
+  await expect(links).toHaveCount(1);
+  await expect(links).toHaveAttribute("href", "/privacy/");
+  expect(listBuiltPages()).toEqual(["/", "/privacy/"]);
 });

@@ -32,17 +32,15 @@ const works = await Promise.all(
             <dt>{data.labels.role}</dt>
             <dd>{data.role}</dd>
           </div>
-          <div class="fact">
-            <dt>{data.labels.highlights}</dt>
-            <dd>
-              <ul class="highlights">
-                {data.highlights.map((highlight) => (
-                  <li>{highlight}</li>
-                ))}
-              </ul>
-            </dd>
-          </div>
         </dl>
+        <div class="highlights">
+          <h4 class="highlights-title">{data.labels.highlights}</h4>
+          <ul class="highlights-list">
+            {data.highlights.map((highlight) => (
+              <li>{highlight}</li>
+            ))}
+          </ul>
+        </div>
         <ul class="tags" role="list" aria-label={data.labels.tech}>
           {data.tech.map((tech) => (
             <li class="tag">{tech}</li>
@@ -99,7 +97,7 @@ const works = await Promise.all(
     }
 
     .summary {
-      max-inline-size: 40em;
+      max-inline-size: var(--measure-body);
       color: var(--color-muted);
     }
 
@@ -129,9 +127,20 @@ const works = await Promise.all(
     }
 
     .highlights {
+      font-size: var(--text-sm);
+    }
+
+    .highlights-title {
+      margin-block-end: var(--space-1);
+      font-size: inherit;
+      font-weight: 700;
+    }
+
+    .highlights-list {
       display: grid;
       gap: var(--space-1);
       padding-inline-start: var(--space-6);
+      color: var(--color-muted);
     }
 
     .tags {

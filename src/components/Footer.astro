@@ -3,24 +3,17 @@ import { getEntry } from "astro:content";
 import { getSingle } from "../lib/content";
 
 const site = (await getSingle("site")).data;
-const legalPages = await Promise.all(
-  (["privacy"] as const).map(async (id) => {
-    const entry = await getEntry("legal", id);
-    if (!entry) throw new Error(`src/content/legal/${id}.md is missing`);
-    return { href: `/${id}/`, label: entry.data.title };
-  }),
-);
+const privacy = await getEntry("legal", "privacy");
+if (!privacy) throw new Error("src/content/legal/privacy.md is missing");
 ---
 
 <footer class="footer">
   <p class="copyright">{site.footer.copyright}</p>
   <nav aria-label={site.footer.navLabel}>
     <ul class="links" role="list">
-      {legalPages.map(({ href, label }) => (
-        <li>
-          <a href={href}>{label}</a>
-        </li>
-      ))}
+      <li>
+        <a href="/privacy/">{privacy.data.title}</a>
+      </li>
     </ul>
   </nav>
 </footer>

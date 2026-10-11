@@ -62,9 +62,12 @@ test("reduced motion では wght が 700 のまま変わらない", async ({ pag
   }
 });
 
-test("Hero には問い合わせへのボタンも空き状況も無い", async ({ page }) => {
+test("Hero は添え書き・見出し・リード文だけで、問い合わせへのリンクもボタンも無い", async ({
+  page,
+}) => {
   await page.goto("/");
   const hero = page.locator("[data-hero]");
-  await expect(hero.getByRole("link")).toHaveCount(0);
   await expect(hero.getByRole("button")).toHaveCount(0);
+  await expect(hero.locator('a[href*="#contact"]')).toHaveCount(0);
+  await expect(hero.locator(":scope > *")).toHaveCount(3);
 });
