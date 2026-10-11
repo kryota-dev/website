@@ -18,7 +18,8 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "test:a11y": "playwright test",
-    "test:lighthouse": "lhci autorun"
+    "test:lighthouse": "lhci autorun",
+    "test:html": "html-validate --config .htmlvalidate.mjs --max-warnings 0 dist/client"
   },
   "dependencies": {
     "@astrojs/cloudflare": "^14.3.4",
@@ -41,6 +42,7 @@
     "eslint-plugin-jsx-a11y": "^6.10.2",
     "fontkit": "^2.0.4",
     "globals": "^17.13.0",
+    "html-validate": "^11.16.2",
     "htmlparser2": "^12.0.0",
     "postcss-html": "^2.0.0",
     "prettier": "^3.9.9",
