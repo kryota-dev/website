@@ -77,5 +77,13 @@ const headingId = `${id}-heading`;
       margin-block-end: var(--space-8);
       color: var(--color-muted);
     }
+
+    /* Marks links that leave the site. The empty alternative text keeps
+       screen readers from announcing the arrow as part of the link name. */
+    .description :global(a[href^="https://"])::after {
+      content: "↗" / "";
+      display: inline-block;
+      margin-inline-start: var(--space-1);
+    }
   }
 </style>

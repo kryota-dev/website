@@ -1,6 +1,6 @@
 ---
 id: profile
-order: 4
+order: 1
 navLabel: プロフィール
 label: Profile
 heading: プロフィール

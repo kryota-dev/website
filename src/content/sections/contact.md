@@ -1,9 +1,9 @@
 ---
 id: contact
-order: 5
-navLabel: 相談
+order: 4
+navLabel: お問い合わせ
 label: Contact
-heading: 相談
+heading: お問い合わせ
 ---
 
-[ご相談の案内文]
+[案内文] [問い合わせフォーム](https://example.com/) [X の DM](https://example.com/)
