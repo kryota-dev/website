@@ -209,6 +209,25 @@ test.describe("OGP 画像の生成", () => {
     ).rejects.toThrow(/heading.*too long/);
   });
 
+  test("見出しの改行は行として描き、行数を大きさの計算に含める", async () => {
+    const joined = await renderOgImage(
+      { ...base, heading: "[一行目][二行目]" },
+      source,
+    );
+    const broken = await renderOgImage(
+      { ...base, heading: "[一行目]\n[二行目]" },
+      source,
+    );
+    expect(broken.equals(joined)).toBe(false);
+    // Short lines that would fit in one line overflow once each is its own line.
+    await expect(
+      renderOgImage(
+        { ...base, heading: Array(12).fill("あ").join("\n") },
+        source,
+      ),
+    ).rejects.toThrow(/heading.*too long/);
+  });
+
   test("フォントにない文字はビルドを失敗させる", async () => {
     await expect(
       renderOgImage({ ...base, heading: "😀" }, source),
