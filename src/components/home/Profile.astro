@@ -4,45 +4,115 @@ import { getSingle } from "../../lib/content";
 import Section from "./Section.astro";
 
 const profile = await getSingle("profile");
+const { qualificationsLabel, qualifications, activitiesLabel, activities } =
+  profile.data;
+const { linksLabel, links } = profile.data;
 const { Content } = await render(profile);
 ---
 
 <Section id="profile">
-  <div class="layout">
-    <div class="body">
-      <Content />
-    </div>
-    {profile.data.links.length > 0 && (
-      <ul class="links" role="list" aria-label={profile.data.linksLabel}>
-        {profile.data.links.map(({ label, href }) => (
-          <li>
-            <a class="link" href={href}>
-              {label}
-              <span aria-hidden="true">↗</span>
-            </a>
-          </li>
-        ))}
-      </ul>
+  <div class="summary">
+    <Content />
+  </div>
+  <div class="blocks">
+    {qualifications.length > 0 && (
+      <div class="block">
+        <h3 class="block-title">{qualificationsLabel}</h3>
+        <dl class="entries">
+          {qualifications.map(({ date, name, note }) => (
+            <div class="entry">
+              <dt class="when">{date}</dt>
+              <dd>
+                {name}
+                {note && <span class="note">{note}</span>}
+              </dd>
+            </div>
+          ))}
+        </dl>
+      </div>
+    )}
+    {activities.length > 0 && (
+      <div class="block">
+        <h3 class="block-title">{activitiesLabel}</h3>
+        <dl class="entries">
+          {activities.map(({ period, title, detail }) => (
+            <div class="entry">
+              <dt class="when">{period}</dt>
+              <dd>
+                {title}
+                {detail && <span class="note">{detail}</span>}
+              </dd>
+            </div>
+          ))}
+        </dl>
+      </div>
+    )}
+    {links.length > 0 && (
+      <div class="block">
+        <h3 class="block-title">{linksLabel}</h3>
+        <ul class="links" role="list">
+          {links.map(({ label, href }) => (
+            <li>
+              <a class="link" href={href}>
+                {label}
+                <span aria-hidden="true">↗</span>
+              </a>
+            </li>
+          ))}
+        </ul>
+      </div>
     )}
   </div>
 </Section>
 
 <style>
   @layer components {
-    .layout {
-      display: flex;
-      flex-wrap: wrap;
-      gap: var(--space-8) var(--space-16);
+    .summary {
+      max-inline-size: 40em;
     }
 
-    .body {
-      flex: 999 1 30rem;
-      min-inline-size: 0;
+    .blocks {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(min(18rem, 100%), 1fr));
+      gap: var(--space-8) var(--space-12);
+      margin-block-start: var(--space-12);
+    }
+
+    .block-title {
+      margin-block-end: var(--space-3);
+      padding-block-end: var(--space-3);
+      border-block-end: var(--border-divider);
+      font-family: var(--font-mono);
+      font-size: var(--text-sm);
+      font-weight: 500;
+      letter-spacing: 0;
+    }
+
+    .entries {
+      display: grid;
+      gap: var(--space-3);
+      font-size: var(--text-sm);
+    }
+
+    .entry dd {
+      margin: 0;
+    }
+
+    .when {
+      color: var(--color-muted);
+      font-family: var(--font-mono);
+      font-size: var(--text-xs);
+      letter-spacing: 0;
+    }
+
+    .note {
+      display: block;
+      color: var(--color-muted);
+      font-size: var(--text-xs);
     }
 
     .links {
       display: flex;
-      flex: 1 1 12rem;
       flex-direction: column;
       gap: var(--space-1);
       padding: 0;

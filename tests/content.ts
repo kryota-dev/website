@@ -51,6 +51,11 @@ export function sections(): SectionContent[] {
 }
 
 export interface ProfileContent {
+  qualificationsLabel: string;
+  qualifications: { date: string; name: string; note?: string }[];
+  activitiesLabel: string;
+  activities: { period: string; title: string; detail?: string }[];
+  linksLabel: string;
   links: { label: string; href: string }[];
 }
 
