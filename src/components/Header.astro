@@ -3,9 +3,7 @@ import { getSections, getSingle } from "../lib/content";
 import ThemeSwitcher from "./ThemeSwitcher.astro";
 
 const site = (await getSingle("site")).data;
-const sections = (await getSections()).filter(
-  (section) => section.data.id !== "contact",
-);
+const sections = await getSections();
 ---
 
 <header class="header">
@@ -23,12 +21,7 @@ const sections = (await getSections()).filter(
       ))}
     </ul>
   </nav>
-  <div class="actions">
-    <ThemeSwitcher />
-    <a class="cta" href="/#contact">
-      {site.contactCta}
-    </a>
-  </div>
+  <ThemeSwitcher />
 </header>
 
 <style>
@@ -78,37 +71,6 @@ const sections = (await getSections()).filter(
     .nav-link:hover {
       color: var(--color-text);
       background-size: 100% 1px;
-    }
-
-    .actions {
-      display: flex;
-      align-items: center;
-      gap: var(--space-3);
-    }
-
-    .cta {
-      display: inline-flex;
-      align-items: center;
-      min-block-size: 2.75rem;
-      padding-inline: var(--space-6);
-      border-radius: var(--radius-pill);
-      background-color: var(--color-accent);
-      color: var(--color-on-accent);
-      font-size: var(--text-sm);
-      font-weight: 700;
-      text-decoration: none;
-      transition:
-        background-color var(--duration-fast) var(--ease-out),
-        transform var(--duration-fast) var(--ease-out);
-    }
-
-    .cta:hover {
-      background-color: var(--color-accent-hover);
-      color: var(--color-on-accent);
-    }
-
-    .cta:active {
-      transform: scale(0.97);
     }
   }
 </style>

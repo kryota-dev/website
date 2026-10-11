@@ -4,7 +4,7 @@ import { getSingle } from "../lib/content";
 
 const site = (await getSingle("site")).data;
 const legalPages = await Promise.all(
-  (["business", "privacy"] as const).map(async (id) => {
+  (["privacy"] as const).map(async (id) => {
     const entry = await getEntry("legal", id);
     if (!entry) throw new Error(`src/content/legal/${id}.md is missing`);
     return { href: `/${id}/`, label: entry.data.title };

@@ -9,7 +9,6 @@ theme:
   light: ライト
   dark: ダーク
   system: システム
-contactCta: 相談する
 footer:
   navLabel: サイト情報
   copyright: © kryota.dev

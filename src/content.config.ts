@@ -30,7 +30,6 @@ const site = defineCollection({
       dark: text,
       system: text,
     }),
-    contactCta: text,
     footer: z.object({ navLabel: text, copyright: text }),
     seo: z.object({
       locale: z.string().regex(/^[a-z]{2}_[A-Z]{2}$/),
@@ -51,11 +50,10 @@ const hero = defineCollection({
   schema: z.object({
     byline: text,
     heading: text,
-    cta: text,
   }),
 });
 
-const sectionId = z.enum(["services", "works", "skills", "profile", "contact"]);
+const sectionId = z.enum(["works", "skills", "profile", "contact"]);
 
 const sections = defineCollection({
   loader: markdown("sections"),
@@ -65,15 +63,6 @@ const sections = defineCollection({
     navLabel: text,
     label: text,
     heading: text,
-  }),
-});
-
-const services = defineCollection({
-  loader: markdown("services"),
-  schema: z.object({
-    order: z.number().int(),
-    label: text,
-    title: text,
   }),
 });
 
@@ -100,15 +89,6 @@ const skills = defineCollection({
   }),
 });
 
-const availability = defineCollection({
-  loader: markdown("availability"),
-  schema: z.object({
-    statusLabel: text,
-    status: text,
-    terms: z.array(z.object({ label: text, value: text })).min(1),
-  }),
-});
-
 const profile = defineCollection({
   loader: markdown("profile"),
   schema: z.object({
@@ -117,64 +97,11 @@ const profile = defineCollection({
   }),
 });
 
-const fieldBase = {
-  id: z.string().regex(/^[a-z][a-z0-9-]*$/),
-  label: text,
-  required: z.boolean().default(false),
-};
-
-const field = z.discriminatedUnion("type", [
-  z.object({
-    ...fieldBase,
-    type: z.enum(["text", "email"]),
-    autocomplete: z.enum(["name", "organization", "email", "tel"]).optional(),
-  }),
-  z.object({ ...fieldBase, type: z.literal("textarea") }),
-  z.object({
-    ...fieldBase,
-    type: z.literal("select"),
-    options: z.array(text).min(1),
-  }),
-]);
-
-const uniqueFieldIds = z
-  .array(field)
-  .min(1)
-  .superRefine((fields, ctx) => {
-    const seen = new Set<string>();
-    fields.forEach((entry, index) => {
-      if (seen.has(entry.id)) {
-        ctx.addIssue({
-          code: "custom",
-          message: `Duplicate field id "${entry.id}"`,
-          path: [index, "id"],
-        });
-      }
-      seen.add(entry.id);
-    });
-  });
-
-const contact = defineCollection({
-  loader: markdown("contact"),
-  schema: z.object({
-    formLabel: text,
-    required: text,
-    optional: text,
-    fields: uniqueFieldIds,
-    submit: text,
-    unavailable: text,
-  }),
-});
-
 const legal = defineCollection({
   loader: markdown("legal"),
   schema: z.object({
     title: text,
     description: text,
-    items: z
-      .array(z.object({ label: text, value: text }))
-      .min(1)
-      .optional(),
   }),
 });
 
@@ -182,11 +109,8 @@ export const collections = {
   site,
   hero,
   sections,
-  services,
   works,
   skills,
-  availability,
   profile,
-  contact,
   legal,
 };

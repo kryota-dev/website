@@ -1,5 +1,4 @@
 import { expect, test, type Page } from "@playwright/test";
-import { availability } from "./content";
 
 const MIN_WEIGHT = 200;
 const MAX_WEIGHT = 900;
@@ -63,14 +62,9 @@ test("reduced motion では wght が 700 のまま変わらない", async ({ pag
   }
 });
 
-test("空き状況は availability/index.md の値が Hero と契約条件の両方に出る", async ({
-  page,
-}) => {
-  const { status, statusLabel } = availability();
+test("Hero には問い合わせへのボタンも空き状況も無い", async ({ page }) => {
   await page.goto("/");
-  await expect(page.locator("[data-hero] .status")).toHaveText(status);
-  const term = page
-    .locator("#services dl > div")
-    .filter({ has: page.locator("dt", { hasText: statusLabel }) });
-  await expect(term.locator("dd")).toHaveText(status);
+  const hero = page.locator("[data-hero]");
+  await expect(hero.getByRole("link")).toHaveCount(0);
+  await expect(hero.getByRole("button")).toHaveCount(0);
 });

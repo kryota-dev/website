@@ -3,13 +3,15 @@ import { expect, test } from "@playwright/test";
 /**
  * axe treats text whose color equals its background as intentionally hidden,
  * so a broken cascade (e.g. layer order) that paints text in the background
- * color passes axe. Check the components that sit on accent fills directly.
+ * color passes axe. Check the components that sit on accent fills directly:
+ * the skip link, shown on focus.
  */
 test("アクセント色の上の文字が背景と区別できる（コントラスト比 4.5 以上）", async ({
   page,
 }) => {
   await page.goto("/");
-  const ratios = await page.locator("a.cta").evaluateAll((links) => {
+  await page.keyboard.press("Tab");
+  const ratios = await page.locator("a.skip-link").evaluateAll((links) => {
     const channel = (value: number) => {
       const c = value / 255;
       return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
