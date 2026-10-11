@@ -63,6 +63,8 @@ export interface SectionContent {
   id: string;
   order: number;
   navLabel: string;
+  icon: string;
+  heading: string;
 }
 
 export const site = () => readFrontmatter<SiteContent>("site/index.md");

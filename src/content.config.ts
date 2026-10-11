@@ -67,6 +67,8 @@ const sections = defineCollection({
     id: sectionId,
     order: z.number().int(),
     navLabel: text,
+    // Shown before the heading; hidden from assistive technology.
+    icon: text,
     label: text,
     heading: text,
   }),

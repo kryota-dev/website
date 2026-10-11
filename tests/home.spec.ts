@@ -1,5 +1,12 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
-import { markdownLinks, profile, readBody, skills, works } from "./content";
+import {
+  markdownLinks,
+  profile,
+  readBody,
+  sections,
+  skills,
+  works,
+} from "./content";
 import { listBuiltPages } from "./pages";
 
 /** Fixed by the requirements (AC-001), not read from the content. */
@@ -36,6 +43,23 @@ test("セクションは Hero → Profile → Works → Skills → Contact の�
       ),
     );
   expect(ids).toEqual(SECTION_ORDER);
+});
+
+test("セクション見出しは絵文字と見出しだけを持ち、絵文字は読み上げに含めない", async ({
+  page,
+}) => {
+  for (const { id, icon, heading } of sections()) {
+    const section = page.locator(`#${id}`);
+    const icons = section.locator(".heading-row .icon");
+    await expect(icons).toHaveCount(1);
+    await expect(icons).toHaveText(icon);
+    await expect(icons).toHaveAttribute("aria-hidden", "true");
+    await expect(
+      section.getByRole("heading", { level: 2 }),
+    ).toHaveAccessibleName(heading);
+    // No section numbers ("01" and so on).
+    await expect(section.locator(".heading-row")).not.toContainText(/\b0\d\b/);
+  }
 });
 
 test.describe("Contact", () => {

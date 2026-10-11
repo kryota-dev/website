@@ -116,6 +116,9 @@ test("文字参照は HTML の規則でデコードして集める", async () =>
   }
 });
 
+/** Emoji and the variation selector that asks for emoji presentation. */
+const EMOJI = /^(?:\p{Extended_Pictographic}|\uFE0F)$/u;
+
 test.describe("表示される文字", () => {
   for (const path of pages) {
     test(`${path} の文字はすべて和文フォントのサブセットに含まれる`, async ({
@@ -123,9 +126,11 @@ test.describe("表示される文字", () => {
     }) => {
       await page.goto(path);
       const text = await page.evaluate(() => document.body.innerText);
+      // Emoji (the section icons) are drawn with the OS's emoji font.
       const missing = [...new Set(text)].filter(
         (char) =>
           char.trim() !== "" &&
+          !EMOJI.test(char) &&
           !noto.hasGlyphForCodePoint(char.codePointAt(0)!),
       );
       expect(missing).toEqual([]);
