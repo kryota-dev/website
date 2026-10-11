@@ -18,10 +18,8 @@ seo:
   ogImageAlt: "[OGP 画像の代替テキスト]"
   person:
     name: "[氏名]"
+    alternateName: "[別名]"
     jobTitle: "[肩書き]"
-  organization:
-    name: "[屋号]"
-    description: "[事業の説明]"
     addressRegion: "[都道府県]"
     addressCountry: JP
 ---

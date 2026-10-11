@@ -7,8 +7,7 @@ const profile = (await getSingle("profile")).data;
 if (!Astro.site) throw new Error("`site` must be set in astro.config.mjs");
 const url = new URL("/", Astro.site).href;
 const personId = `${url}#person`;
-const organizationId = `${url}#organization`;
-const { person, organization } = site.seo;
+const { person } = site.seo;
 
 // sameAs lists web pages that identify the person, not contact links (mailto:).
 const sameAs = profile.links
@@ -29,22 +28,14 @@ const graph = {
       "@type": "Person",
       "@id": personId,
       name: person.name,
+      alternateName: person.alternateName,
       jobTitle: person.jobTitle,
       url,
       sameAs,
-      worksFor: { "@id": organizationId },
-    },
-    {
-      "@type": "Organization",
-      "@id": organizationId,
-      name: organization.name,
-      description: organization.description,
-      url,
-      founder: { "@id": personId },
       address: {
         "@type": "PostalAddress",
-        addressRegion: organization.addressRegion,
-        addressCountry: organization.addressCountry,
+        addressRegion: person.addressRegion,
+        addressCountry: person.addressCountry,
       },
     },
   ],
