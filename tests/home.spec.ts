@@ -11,6 +11,8 @@ import { listBuiltPages } from "./pages";
 
 /** Fixed by the requirements (AC-001), not read from the content. */
 const SECTION_ORDER = ["hero", "profile", "works", "skills", "contact"];
+/** At least --space-4 (16px) between consecutive paragraphs. */
+const MIN_PARAGRAPH_GAP = 16;
 
 test.beforeEach(async ({ page }) => {
   await page.goto("/");
@@ -195,4 +197,19 @@ test("フッターにはプライバシーポリシーへのリンクだけが�
   await expect(links).toHaveCount(1);
   await expect(links).toHaveAttribute("href", "/privacy/");
   expect(listBuiltPages()).toEqual(["/", "/privacy/"]);
+});
+
+test("職務要約の段落の間には余白がある", async ({ page }) => {
+  const paragraphs = page.locator("#profile .summary p");
+  expect(await paragraphs.count()).toBeGreaterThan(1);
+  const gaps = await paragraphs.evaluateAll((list) =>
+    list
+      .slice(1)
+      .map(
+        (p, i) =>
+          p.getBoundingClientRect().top -
+          list[i].getBoundingClientRect().bottom,
+      ),
+  );
+  for (const gap of gaps) expect(gap).toBeGreaterThanOrEqual(MIN_PARAGRAPH_GAP);
 });

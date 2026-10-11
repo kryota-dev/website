@@ -39,6 +39,12 @@ a[href^="https://"]::after {
   outline-offset: 3px;
 }
 
+/* Consecutive paragraphs, e.g. in Markdown bodies, need a gap: reset.css
+   removes the default margins. */
+p + p {
+  margin-block-start: var(--space-4);
+}
+
 code,
 kbd,
 samp {
