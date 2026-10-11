@@ -25,10 +25,10 @@ export interface SiteContent {
   seo: {
     locale: string;
     ogImageAlt: string;
-    person: { name: string; jobTitle: string };
-    organization: {
+    person: {
       name: string;
-      description: string;
+      alternateName: string;
+      jobTitle: string;
       addressRegion: string;
       addressCountry: string;
     };

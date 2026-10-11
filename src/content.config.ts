@@ -34,10 +34,11 @@ const site = defineCollection({
     seo: z.object({
       locale: z.string().regex(/^[a-z]{2}_[A-Z]{2}$/),
       ogImageAlt: text,
-      person: z.object({ name: text, jobTitle: text }),
-      organization: z.object({
+      person: z.object({
         name: text,
-        description: text,
+        alternateName: text,
+        jobTitle: text,
+        // Prefecture only; no street address.
         addressRegion: text,
         addressCountry: z.string().regex(/^[A-Z]{2}$/),
       }),

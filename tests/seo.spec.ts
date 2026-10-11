@@ -94,7 +94,7 @@ for (const path of pages) {
   });
 }
 
-test("トップページは ProfilePage・Person・Organization の JSON-LD を出力する", async ({
+test("トップページは ProfilePage と Person の JSON-LD を出力する（Organization は出さない）", async ({
   page,
 }) => {
   await page.goto("/");
@@ -104,7 +104,7 @@ test("トップページは ProfilePage・Person・Organization の JSON-LD を�
   expect(scripts).toHaveLength(1);
   const data = JSON.parse(scripts[0]);
   const home = absolute("/");
-  const { person, organization } = site.seo;
+  const { person } = site.seo;
   const sameAs = profile()
     .links.map(({ href }) => href)
     .filter((href) => href.startsWith("https:"));
@@ -122,22 +122,14 @@ test("トップページは ProfilePage・Person・Organization の JSON-LD を�
         "@type": "Person",
         "@id": `${home}#person`,
         name: person.name,
+        alternateName: person.alternateName,
         jobTitle: person.jobTitle,
         url: home,
         sameAs,
-        worksFor: { "@id": `${home}#organization` },
-      },
-      {
-        "@type": "Organization",
-        "@id": `${home}#organization`,
-        name: organization.name,
-        description: organization.description,
-        url: home,
-        founder: { "@id": `${home}#person` },
         address: {
           "@type": "PostalAddress",
-          addressRegion: organization.addressRegion,
-          addressCountry: organization.addressCountry,
+          addressRegion: person.addressRegion,
+          addressCountry: person.addressCountry,
         },
       },
     ],
