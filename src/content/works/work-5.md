@@ -1,5 +1,5 @@
 ---
-order: 5
+order: 4
 industry: "製造（金属加工・釣具）"
 period: "2025年1月〜2025年8月"
 title: "金属加工企業のコーポレートサイト・釣具ブランドサイト制作"
@@ -9,11 +9,11 @@ highlights:
   - "製品カテゴリ・詳細ページと、microCMS と連携した製品情報の表示"
   - "メタデータ・サイトマップ・構造化データなどの設定"
   - "GitHub Actions による静的ビルド・公開手順を整備し、公開前に主要ページ・フォーム・CMS 連携を確認"
-  - "サイトの要件に合わせ、Vite / TypeScript / SCSS と Next.js / React を使い分け"
+  - "サイトの要件に合わせ、Vite / TypeScript / Sass と Next.js / React を使い分け"
 tech:
   - "TypeScript"
   - "Vite"
-  - "Sass（SCSS）"
+  - "Sass"
   - "jQuery"
   - "Next.js"
   - "React"

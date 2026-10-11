@@ -50,7 +50,12 @@ const hero = defineCollection({
   loader: markdown("hero"),
   schema: z.object({
     byline: text,
-    heading: text,
+    // A "\n" breaks the heading into lines (Hero and the OGP image), so each
+    // line must have text: no leading, trailing, or doubled line breaks.
+    heading: text.refine(
+      (value) => value.split("\n").every((line) => line.trim() !== ""),
+      { message: "heading must not have empty lines" },
+    ),
   }),
 });
 

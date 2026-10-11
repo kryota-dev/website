@@ -6,5 +6,6 @@ items:
   - "JavaScript"
   - "SQL"
   - "HTML"
-  - "CSS（Sass）"
+  - "CSS"
+  - "Sass"
 ---

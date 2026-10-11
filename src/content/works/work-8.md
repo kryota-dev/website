@@ -1,5 +1,5 @@
 ---
-order: 8
+order: 7
 industry: "人材サービス"
 period: "2023年7月〜2025年2月"
 title: "総合求人サイトの Web フロント開発"

@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { expect, test } from "@playwright/test";
 import { renderOgImage } from "../scripts/og-image.mjs";
 import { serializeJsonLd } from "../src/lib/json-ld";
-import { legal, profile, site as readSite } from "./content";
+import { legal, profile, readFrontmatter, site as readSite } from "./content";
 import { listBuiltPages } from "./pages";
 
 const SITE_URL = "https://kryota.dev";
@@ -136,6 +136,16 @@ test("トップページは ProfilePage と Person の JSON-LD を出力する�
   });
 });
 
+test("OGP 画像の代替テキストは、画像に描くサイト名・添え書き・見出しを含む", () => {
+  const { byline, heading } = readFrontmatter<{
+    byline: string;
+    heading: string;
+  }>("hero/index.md");
+  for (const text of [site.name, byline, heading.replaceAll("\n", "")]) {
+    expect(site.seo.ogImageAlt).toContain(text);
+  }
+});
+
 test("JSON-LD は script を閉じられない形で出力し、元の値に戻せる", () => {
   const value = { name: "</script><!-- <script>alert(1)</script> -->" };
   const json = serializeJsonLd(value);
@@ -219,12 +229,13 @@ test.describe("OGP 画像の生成", () => {
       source,
     );
     expect(broken.equals(joined)).toBe(false);
-    // Short lines that would fit in one line overflow once each is its own line.
+    // At the smallest size (48px), 4 lines fit and 5 do not, however short.
+    const lines = (count: number) => Array(count).fill("あ").join("\n");
     await expect(
-      renderOgImage(
-        { ...base, heading: Array(12).fill("あ").join("\n") },
-        source,
-      ),
+      renderOgImage({ ...base, heading: lines(4) }, source),
+    ).resolves.toBeInstanceOf(Buffer);
+    await expect(
+      renderOgImage({ ...base, heading: lines(5) }, source),
     ).rejects.toThrow(/heading.*too long/);
   });
 
