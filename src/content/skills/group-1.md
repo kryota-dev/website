@@ -1,7 +1,10 @@
 ---
 order: 1
-group: "[分類]"
+group: "言語"
 items:
-  - "[スキル]"
-  - "[スキル]"
+  - "TypeScript"
+  - "JavaScript"
+  - "SQL"
+  - "HTML"
+  - "CSS（Sass）"
 ---

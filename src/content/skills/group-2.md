@@ -1,7 +1,11 @@
 ---
 order: 2
-group: "[分類]"
+group: "フロントエンド"
 items:
-  - "[スキル]"
-  - "[スキル]"
+  - "React"
+  - "Next.js"
+  - "Electron"
+  - "Tailwind CSS"
+  - "Zustand"
+  - "Storybook"
 ---
