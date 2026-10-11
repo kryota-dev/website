@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { sections, works } from "./content";
+import { profile, sections, works } from "./content";
 
 test.beforeEach(async ({ page }) => {
   await page.goto("/");
@@ -62,5 +62,39 @@ test("Works のカードは新しい順に、概要・役割・主な取り組�
     await expect(
       card.getByRole("list", { name: work.labels.tech }).getByRole("listitem"),
     ).toHaveText(work.tech);
+  }
+});
+
+test("Profile は資格・活動・外部リンクを、見出しの下にデータの順で並べる", async ({
+  page,
+}) => {
+  const content = profile();
+  const section = page.locator("#profile");
+  const block = (label: string) =>
+    section.locator(".block").filter({
+      has: page.getByRole("heading", { level: 3, name: label, exact: true }),
+    });
+
+  const qualifications = block(content.qualificationsLabel);
+  await expect(qualifications.locator("dt")).toHaveText(
+    content.qualifications.map(({ date }) => date),
+  );
+  await expect(qualifications.locator("dd")).toHaveText(
+    content.qualifications.map(({ name, note }) => `${name}${note ?? ""}`),
+  );
+
+  const activities = block(content.activitiesLabel);
+  await expect(activities.locator("dt")).toHaveText(
+    content.activities.map(({ period }) => period),
+  );
+  await expect(activities.locator("dd")).toHaveText(
+    content.activities.map(({ title, detail }) => `${title}${detail ?? ""}`),
+  );
+
+  const links = block(content.linksLabel).getByRole("link");
+  await expect(links).toHaveCount(content.links.length);
+  for (const [index, { label, href }] of content.links.entries()) {
+    await expect(links.nth(index)).toHaveAccessibleName(label);
+    await expect(links.nth(index)).toHaveAttribute("href", href);
   }
 });

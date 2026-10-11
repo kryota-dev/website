@@ -92,6 +92,16 @@ const skills = defineCollection({
 const profile = defineCollection({
   loader: markdown("profile"),
   schema: z.object({
+    qualificationsLabel: text,
+    // Newest first; a lapsed certification keeps its note (e.g. the expiry).
+    qualifications: z.array(
+      z.object({ date: text, name: text, note: text.optional() }),
+    ),
+    activitiesLabel: text,
+    // Newest first.
+    activities: z.array(
+      z.object({ period: text, title: text, detail: text.optional() }),
+    ),
     linksLabel: text,
     links: z.array(link),
   }),
