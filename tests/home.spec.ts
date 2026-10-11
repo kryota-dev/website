@@ -13,6 +13,8 @@ import { listBuiltPages } from "./pages";
 const SECTION_ORDER = ["hero", "profile", "works", "skills", "contact"];
 /** At least --space-4 (16px) between consecutive paragraphs. */
 const MIN_PARAGRAPH_GAP = 16;
+/** At least --space-8 (32px) before a heading in a Markdown body. */
+const MIN_HEADING_GAP = 32;
 
 test.beforeEach(async ({ page }) => {
   await page.goto("/");
@@ -211,5 +213,26 @@ test("職務要約の段落の間には余白がある", async ({ page }) => {
           list[i].getBoundingClientRect().bottom,
       ),
   );
-  for (const gap of gaps) expect(gap).toBeGreaterThanOrEqual(MIN_PARAGRAPH_GAP);
+  // Allow sub-pixel rounding in the layout.
+  for (const gap of gaps)
+    expect(gap).toBeGreaterThanOrEqual(MIN_PARAGRAPH_GAP - 0.5);
+});
+
+test("プライバシーポリシーの本文は、ブロックの間に余白があり、見出しの前はさらに空く", async ({
+  page,
+}) => {
+  await page.goto("/privacy/");
+  const gaps = await page.locator(".legal .body > *").evaluateAll((list) =>
+    list.slice(1).map((el, i) => ({
+      tag: el.tagName,
+      gap:
+        el.getBoundingClientRect().top - list[i].getBoundingClientRect().bottom,
+    })),
+  );
+  expect(gaps.length).toBeGreaterThan(0);
+  for (const { tag, gap } of gaps) {
+    expect(gap, tag).toBeGreaterThanOrEqual(
+      (tag === "H2" ? MIN_HEADING_GAP : MIN_PARAGRAPH_GAP) - 0.5,
+    );
+  }
 });

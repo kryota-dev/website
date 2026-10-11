@@ -43,5 +43,15 @@ const { Content } = await render(entry);
     .body {
       margin-block-start: var(--space-8);
     }
+
+    /* The Markdown body: space between blocks, more before each heading. */
+    .body > :global(* + *) {
+      margin-block-start: var(--space-4);
+    }
+
+    .body > :global(h2) {
+      margin-block-start: var(--space-8);
+      font-size: var(--text-lg);
+    }
   }
 </style>

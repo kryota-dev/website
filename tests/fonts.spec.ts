@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { expect, test, type Page } from "@playwright/test";
 import { create, type Font } from "fontkit";
 import { collectCharacters } from "../scripts/subset-fonts.mjs";
+import { sections } from "./content";
 import { listBuiltPages } from "./pages";
 
 const DIST_DIR = "dist/client";
@@ -84,6 +85,17 @@ test.describe("出力 HTML", () => {
   });
 });
 
+test("セクションの絵文字は OS の絵文字フォントで描く", async ({ page }) => {
+  await page.goto("/");
+  const families = await page
+    .locator(".heading-row .icon")
+    .evaluateAll((icons) =>
+      icons.map((icon) => getComputedStyle(icon).fontFamily.split(",")[0]),
+    );
+  expect(families.length).toBeGreaterThan(0);
+  for (const family of families) expect(family).toBe('"Apple Color Emoji"');
+});
+
 test.describe("配信する和文フォント", () => {
   test("wght 軸（100〜900）を保つ", () => {
     expect(noto.variationAxes.wght).toMatchObject({ min: 100, max: 900 });
@@ -116,8 +128,8 @@ test("文字参照は HTML の規則でデコードして集める", async () =>
   }
 });
 
-/** Emoji and the variation selector that asks for emoji presentation. */
-const EMOJI = /^(?:\p{Extended_Pictographic}|\uFE0F)$/u;
+/** The section icons, drawn with the OS's emoji font instead of the subset. */
+const ICON_CHARS = new Set(sections().flatMap(({ icon }) => [...icon]));
 
 test.describe("表示される文字", () => {
   for (const path of pages) {
@@ -126,11 +138,10 @@ test.describe("表示される文字", () => {
     }) => {
       await page.goto(path);
       const text = await page.evaluate(() => document.body.innerText);
-      // Emoji (the section icons) are drawn with the OS's emoji font.
       const missing = [...new Set(text)].filter(
         (char) =>
           char.trim() !== "" &&
-          !EMOJI.test(char) &&
+          !ICON_CHARS.has(char) &&
           !noto.hasGlyphForCodePoint(char.codePointAt(0)!),
       );
       expect(missing).toEqual([]);
@@ -184,7 +195,7 @@ async function notoFamily(page: Page): Promise<string> {
  * with the heading's computed font and returns the amount of ink. Glyph advances
  * barely change with weight in Japanese, so ink (stroke thickness) is measured.
  */
-async function heroInkAt(
+async function headingInkAt(
   page: Page,
   family: string,
   weight: number,
@@ -241,7 +252,7 @@ test("wght の変化が、配信した和文フォントの描画の太さに連
   // 500 identically, so this fails if the wght axis is lost.
   const results = [];
   for (const weight of [300, 400, 500])
-    results.push(await heroInkAt(page, family, weight, sample));
+    results.push(await headingInkAt(page, family, weight, sample));
   expect(results.map(({ weight }) => weight)).toEqual(["300", "400", "500"]);
   expect(results[1].ink).toBeGreaterThan(results[0].ink);
   expect(results[2].ink).toBeGreaterThan(results[1].ink);

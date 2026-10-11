@@ -5,7 +5,10 @@ import { readFrontmatter } from "./content";
 const HEADING_WEIGHT = 500;
 const MIN_FONT_SIZE = 28;
 const MAX_FONT_SIZE = 56;
-const SAMPLE_FRAMES = 30;
+/** Frames recorded after the pointer has left the hero. */
+const FRAMES_AFTER = 10;
+/** Narrower viewports clamp to the minimum size, wider ones to the maximum. */
+const WIDE_VIEWPORT = 1024;
 
 const heading = (page: Page) => page.locator("#hero-heading");
 
@@ -21,28 +24,45 @@ test("見出しは太さ 500 で静止し、ポインターを動かしても出
 }) => {
   await page.emulateMedia({ reducedMotion: "no-preference" });
   await page.goto("/");
-  // Record the weight on every frame while the pointer moves in and out.
+  // Record the weight on every frame until a few frames after the pointer
+  // has moved in, across, and out.
+  type Probe = { weights: string[]; done: boolean; after: number };
   await heading(page).evaluate((el, frames) => {
-    const weights: string[] = [];
-    (window as unknown as { heroWeights: string[] }).heroWeights = weights;
+    const probe: Probe = { weights: [], done: false, after: 0 };
+    (window as unknown as { heroProbe: Probe }).heroProbe = probe;
     const tick = () => {
-      weights.push(getComputedStyle(el).fontWeight);
-      if (weights.length < frames) requestAnimationFrame(tick);
+      probe.weights.push(getComputedStyle(el).fontWeight);
+      if (probe.done) probe.after += 1;
+      if (probe.after < frames) requestAnimationFrame(tick);
     };
     requestAnimationFrame(tick);
-  }, SAMPLE_FRAMES);
+  }, FRAMES_AFTER);
   for (const ratio of [0.1, 0.9, 0.5]) await moveAcrossHero(page, ratio);
   await page.mouse.move(1, 1);
+  await page.evaluate(() => {
+    (window as unknown as { heroProbe: Probe }).heroProbe.done = true;
+  });
   await page.waitForFunction(
     (frames) =>
-      (window as unknown as { heroWeights: string[] }).heroWeights.length >=
-      frames,
-    SAMPLE_FRAMES,
+      (window as unknown as { heroProbe: Probe }).heroProbe.after >= frames,
+    FRAMES_AFTER,
   );
   const weights = await page.evaluate(
-    () => (window as unknown as { heroWeights: string[] }).heroWeights,
+    () => (window as unknown as { heroProbe: Probe }).heroProbe.weights,
   );
   expect(new Set(weights)).toEqual(new Set([String(HEADING_WEIGHT)]));
+});
+
+test("見出しの文字の大きさは、狭い画面で 28px、広い画面で 56px になる", async ({
+  page,
+}) => {
+  await page.goto("/");
+  const size = await heading(page).evaluate((el) =>
+    parseFloat(getComputedStyle(el).fontSize),
+  );
+  // The viewports in playwright.config.ts sit beyond both ends of the clamp.
+  const width = page.viewportSize()?.width ?? 0;
+  expect(size).toBe(width < WIDE_VIEWPORT ? MIN_FONT_SIZE : MAX_FONT_SIZE);
 });
 
 test("見出しの文字の大きさは 28〜56px に収まる", async ({ page }) => {
