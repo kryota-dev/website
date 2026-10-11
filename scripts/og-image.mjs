@@ -23,7 +23,7 @@ const COLORS = {
 };
 
 const FONT_FAMILY = "Noto Sans JP";
-const WEIGHTS = /** @type {const} */ ([400, 700]);
+const WEIGHTS = /** @type {const} */ ([400, 500, 700]);
 const PADDING = 80;
 const CONTENT_WIDTH = OG_IMAGE.width - PADDING * 2;
 const CONTENT_HEIGHT = OG_IMAGE.height - PADDING * 2;
@@ -183,7 +183,8 @@ export async function renderOgImage(text, source) {
           display: "flex",
           flexDirection: "column",
           fontSize: size,
-          fontWeight: 700,
+          // The same weight as the hero heading on the site.
+          fontWeight: 500,
           lineHeight: HEADING_LINE_HEIGHT,
         },
         text.heading.split("\n").map((line) => el("div", {}, line)),

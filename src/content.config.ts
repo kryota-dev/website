@@ -67,8 +67,9 @@ const sections = defineCollection({
     id: sectionId,
     order: z.number().int(),
     navLabel: text,
-    // Shown before the heading; hidden from assistive technology.
-    icon: text,
+    // One emoji shown before the heading; hidden from assistive technology,
+    // so it must not carry text.
+    icon: z.string().regex(/^\p{RGI_Emoji}$/v, "icon must be one emoji"),
     label: text,
     heading: text,
   }),
