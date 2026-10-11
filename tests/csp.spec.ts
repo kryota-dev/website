@@ -75,9 +75,7 @@ for (const path of pages) {
   });
 }
 
-test("テーマの切り替えと Hero の操作でも CSP の違反がない", async ({
-  page,
-}) => {
+test("テーマの切り替えでも CSP の違反がない", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "no-preference" });
   await serveWithCsp(page);
   // Record each View Transition so the test can wait for it to finish.
@@ -92,17 +90,6 @@ test("テーマの切り替えと Hero の操作でも CSP の違反がない", 
     };
   });
   await page.goto("/");
-
-  const heroWeight = () =>
-    page
-      .locator("#hero-heading")
-      .evaluate((el) => getComputedStyle(el).getPropertyValue("--hero-wght"));
-  const hero = await page.locator("[data-hero]").boundingBox();
-  if (!hero) throw new Error("Hero is not rendered");
-  await page.mouse.move(hero.x + hero.width * 0.2, hero.y + hero.height / 2);
-  const before = await heroWeight();
-  await page.mouse.move(hero.x + hero.width * 0.8, hero.y + hero.height / 2);
-  await expect.poll(heroWeight).not.toBe(before);
 
   const themes = [
     [labels.dark, "dark"],

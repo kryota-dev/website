@@ -1,22 +1,13 @@
 import { expect, test, type Page } from "@playwright/test";
 import { readFrontmatter } from "./content";
 
-const MIN_WEIGHT = 200;
-const MAX_WEIGHT = 900;
-const REST_WEIGHT = 700;
-const EDGE_TOLERANCE = 10;
+/** Fixed by the requirements (AC-050), not read from the code. */
+const HEADING_WEIGHT = 500;
+const MIN_FONT_SIZE = 28;
+const MAX_FONT_SIZE = 56;
+const SAMPLE_FRAMES = 30;
 
 const heading = (page: Page) => page.locator("#hero-heading");
-
-const heroWeight = async (page: Page) =>
-  Number(
-    await heading(page).evaluate((el) =>
-      getComputedStyle(el).getPropertyValue("--hero-wght").trim(),
-    ),
-  );
-
-const renderedWeight = async (page: Page) =>
-  Number(await heading(page).evaluate((el) => getComputedStyle(el).fontWeight));
 
 /** Moves the pointer inside the hero; ratio 0 = left edge, 1 = right edge. */
 async function moveAcrossHero(page: Page, ratio: number) {
@@ -25,42 +16,42 @@ async function moveAcrossHero(page: Page, ratio: number) {
   await page.mouse.move(box.x + box.width * ratio, box.y + box.height / 2);
 }
 
-test("ポインターの横位置で wght が 200〜900 に変わり、見出しの太さに反映される", async ({
+test("見出しは太さ 500 で静止し、ポインターを動かしても出入りしても変わらない", async ({
   page,
 }) => {
   await page.emulateMedia({ reducedMotion: "no-preference" });
   await page.goto("/");
-
-  await moveAcrossHero(page, 0.001);
-  await expect.poll(() => heroWeight(page)).toBeGreaterThanOrEqual(MIN_WEIGHT);
-  expect(await heroWeight(page)).toBeLessThanOrEqual(
-    MIN_WEIGHT + EDGE_TOLERANCE,
-  );
-
-  await moveAcrossHero(page, 0.5);
-  await expect.poll(() => heroWeight(page)).toBe((MIN_WEIGHT + MAX_WEIGHT) / 2);
-  await expect
-    .poll(() => renderedWeight(page))
-    .toBe((MIN_WEIGHT + MAX_WEIGHT) / 2);
-
-  await moveAcrossHero(page, 0.999);
-  await expect
-    .poll(() => heroWeight(page))
-    .toBeGreaterThanOrEqual(MAX_WEIGHT - EDGE_TOLERANCE);
-  expect(await heroWeight(page)).toBeLessThanOrEqual(MAX_WEIGHT);
-
+  // Record the weight on every frame while the pointer moves in and out.
+  await heading(page).evaluate((el, frames) => {
+    const weights: string[] = [];
+    (window as unknown as { heroWeights: string[] }).heroWeights = weights;
+    const tick = () => {
+      weights.push(getComputedStyle(el).fontWeight);
+      if (weights.length < frames) requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  }, SAMPLE_FRAMES);
+  for (const ratio of [0.1, 0.9, 0.5]) await moveAcrossHero(page, ratio);
   await page.mouse.move(1, 1);
-  await expect.poll(() => heroWeight(page)).toBe(REST_WEIGHT);
+  await page.waitForFunction(
+    (frames) =>
+      (window as unknown as { heroWeights: string[] }).heroWeights.length >=
+      frames,
+    SAMPLE_FRAMES,
+  );
+  const weights = await page.evaluate(
+    () => (window as unknown as { heroWeights: string[] }).heroWeights,
+  );
+  expect(new Set(weights)).toEqual(new Set([String(HEADING_WEIGHT)]));
 });
 
-test("reduced motion では wght が 700 のまま変わらない", async ({ page }) => {
-  await page.emulateMedia({ reducedMotion: "reduce" });
+test("見出しの文字の大きさは 28〜56px に収まる", async ({ page }) => {
   await page.goto("/");
-  for (const ratio of [0.1, 0.9]) {
-    await moveAcrossHero(page, ratio);
-    expect(await heroWeight(page)).toBe(REST_WEIGHT);
-    expect(await renderedWeight(page)).toBe(REST_WEIGHT);
-  }
+  const size = await heading(page).evaluate((el) =>
+    parseFloat(getComputedStyle(el).fontSize),
+  );
+  expect(size).toBeGreaterThanOrEqual(MIN_FONT_SIZE);
+  expect(size).toBeLessThanOrEqual(MAX_FONT_SIZE);
 });
 
 test("Hero は添え書き・見出し・リード文だけで、問い合わせへのリンクもボタンも無い", async ({
