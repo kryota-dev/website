@@ -74,9 +74,9 @@ const works = defineCollection({
     period: text,
     title: text,
     role: text,
-    result: text,
+    highlights: z.array(text).min(1),
     tech: z.array(text).min(1),
-    labels: z.object({ role: text, result: text, tech: text }),
+    labels: z.object({ role: text, highlights: text, tech: text }),
   }),
 });
 
