@@ -46,8 +46,8 @@ test("ヘッダーは ロゴ → ナビ → テーマ切替 の順にフォー�
     await page.keyboard.press("Tab");
     await expect(target).toBeFocused();
   }
-  // Only the logo and the navigation are links in the header.
-  await expect(page.getByRole("banner").getByRole("link")).toHaveCount(
-    navSections.length + 1,
-  );
+  // Only the logo and the navigation are links, and there are no buttons.
+  const header = page.getByRole("banner");
+  await expect(header.getByRole("link")).toHaveCount(navSections.length + 1);
+  await expect(header.getByRole("button")).toHaveCount(0);
 });

@@ -26,6 +26,14 @@ a:hover {
   color: var(--color-accent-hover);
 }
 
+/* Marks links that leave the site; link to this site with relative paths.
+   The empty alternative text keeps the arrow out of the link's name. */
+a[href^="https://"]::after {
+  content: "↗" / "";
+  display: inline-block;
+  margin-inline-start: var(--space-1);
+}
+
 :focus-visible {
   outline: 2px solid var(--color-accent);
   outline-offset: 3px;

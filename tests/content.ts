@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { parse } from "yaml";
 
 const CONTENT_DIR = "src/content";
-const FRONTMATTER = /^---\r?\n([\s\S]*?)\r?\n---/;
+const FRONTMATTER = /^---\r?\n([\s\S]*?)\r?\n---\r?\n?/;
 
 /**
  * Reads a content file's frontmatter so tests follow the Markdown instead of
@@ -14,6 +14,30 @@ export function readFrontmatter<T>(file: string): T {
   const match = source.match(FRONTMATTER);
   if (!match) throw new Error(`${file} has no frontmatter`);
   return parse(match[1]) as T;
+}
+
+/** Reads a content file's Markdown body (everything after the frontmatter). */
+export function readBody(file: string): string {
+  const source = readFileSync(join(CONTENT_DIR, file), "utf8");
+  return source.replace(FRONTMATTER, "").trim();
+}
+
+/**
+ * Reads every entry of an ordered collection, sorted by `order`. The id is the
+ * file path without `.md`, as the glob loader derives it for these
+ * lowercase, single-level file names.
+ */
+function readOrdered<T extends { order: number }>(
+  collection: string,
+): (T & { id: string; body: string })[] {
+  return readdirSync(join(CONTENT_DIR, collection))
+    .filter((file) => file.endsWith(".md"))
+    .map((file) => ({
+      id: file.replace(/\.md$/, ""),
+      body: readBody(join(collection, file)),
+      ...readFrontmatter<T>(join(collection, file)),
+    }))
+    .sort((a, b) => a.order - b.order);
 }
 
 export interface SiteContent {
@@ -43,11 +67,21 @@ export interface SectionContent {
 
 export const site = () => readFrontmatter<SiteContent>("site/index.md");
 
-export function sections(): SectionContent[] {
-  return readdirSync(join(CONTENT_DIR, "sections"))
-    .filter((file) => file.endsWith(".md"))
-    .map((file) => readFrontmatter<SectionContent>(join("sections", file)))
-    .sort((a, b) => a.order - b.order);
+export const sections = () => readOrdered<SectionContent>("sections");
+
+export interface SkillGroupContent {
+  order: number;
+  group: string;
+  items: string[];
+}
+
+export const skills = () => readOrdered<SkillGroupContent>("skills");
+
+/** Inline Markdown links (`[label](href)`) in a body, in order. */
+export function markdownLinks(body: string): { label: string; href: string }[] {
+  return [...body.matchAll(/\[([^\]]+)\]\(([^)\s]+)\)/g)].map(
+    ([, label, href]) => ({ label, href }),
+  );
 }
 
 export interface ProfileContent {
@@ -82,12 +116,4 @@ export interface WorkContent {
 }
 
 /** Works in display order (`order` ascending: the most recent first). */
-export function works(): (WorkContent & { id: string })[] {
-  return readdirSync(join(CONTENT_DIR, "works"))
-    .filter((file) => file.endsWith(".md"))
-    .map((file) => ({
-      id: file.replace(/\.md$/, ""),
-      ...readFrontmatter<WorkContent>(join("works", file)),
-    }))
-    .sort((a, b) => a.order - b.order);
-}
+export const works = () => readOrdered<WorkContent>("works");

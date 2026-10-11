@@ -32,6 +32,9 @@ select {
 }
 
 p,
+li,
+dt,
+dd,
 h1,
 h2,
 h3,

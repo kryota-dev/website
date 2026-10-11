@@ -1,0 +1,55 @@
+---
+import SubHeading from "./SubHeading.astro";
+
+interface Props {
+  label: string;
+  /** `when` is a date or period; `note` is an optional second line. */
+  entries: { when: string; text: string; note?: string }[];
+}
+
+const { label, entries } = Astro.props;
+---
+
+{entries.length > 0 && (
+  <div class="entry-list">
+    <SubHeading>{label}</SubHeading>
+    <dl class="entries">
+      {entries.map(({ when, text, note }) => (
+        <div class="entry">
+          <dt class="when">{when}</dt>
+          <dd>
+            {text}
+            {note && <span class="note">{note}</span>}
+          </dd>
+        </div>
+      ))}
+    </dl>
+  </div>
+)}
+
+<style>
+  @layer components {
+    .entries {
+      display: grid;
+      gap: var(--space-3);
+      font-size: var(--text-sm);
+    }
+
+    .entry dd {
+      margin: 0;
+    }
+
+    .when {
+      color: var(--color-muted);
+      font-family: var(--font-mono);
+      font-size: var(--text-xs);
+      letter-spacing: 0;
+    }
+
+    .note {
+      display: block;
+      color: var(--color-muted);
+      font-size: var(--text-xs);
+    }
+  }
+</style>

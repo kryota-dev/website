@@ -1,0 +1,21 @@
+---
+// The small mono heading (h3) used inside a section, e.g. a skill category.
+---
+
+<h3 class="subheading">
+  <slot />
+</h3>
+
+<style>
+  @layer components {
+    .subheading {
+      margin-block-end: var(--space-3);
+      padding-block-end: var(--space-3);
+      border-block-end: var(--border-divider);
+      font-family: var(--font-mono);
+      font-size: var(--text-sm);
+      font-weight: 500;
+      letter-spacing: 0;
+    }
+  }
+</style>
