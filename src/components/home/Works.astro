@@ -3,7 +3,7 @@ import { render } from "astro:content";
 import { getOrdered } from "../../lib/content";
 import Section from "./Section.astro";
 
-// Ordered by `order`: 1 is the most recent work.
+// Ordered by `order`: 1 is the work that ended most recently.
 const works = await Promise.all(
   (await getOrdered("works")).map(async (entry) => {
     if (!entry.body?.trim()) {

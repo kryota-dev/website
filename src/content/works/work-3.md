@@ -1,5 +1,5 @@
 ---
-order: 3
+order: 8
 industry: "物流（業務支援システム）"
 period: "2024年10月〜2025年1月"
 title: "物流業務支援 Web システムの UI 開発"

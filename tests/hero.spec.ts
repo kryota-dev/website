@@ -78,6 +78,8 @@ test("見出しの改行は hero/index.md のとおりに <br> で入る", async
 }) => {
   const { heading } = readFrontmatter<{ heading: string }>("hero/index.md");
   const lines = heading.split("\n");
+  // The current copy breaks the heading, so the <br> path is exercised.
+  expect(lines.length).toBeGreaterThan(1);
   await page.goto("/");
   const h1 = page.locator("#hero-heading");
   await expect(h1.locator("br")).toHaveCount(lines.length - 1);
