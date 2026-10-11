@@ -36,7 +36,7 @@
   --text-md: 1rem; /* 16px */
   --text-lg: 1.25rem; /* 20px */
   --text-xl: clamp(1.625rem, 3.2vw, 2.25rem); /* h2: 26-36px */
-  --text-hero: clamp(2.125rem, 5.6vw, 4.75rem); /* hero: 34-76px */
+  --text-hero: clamp(1.75rem, 4.2vw, 3.5rem); /* hero: 28-56px */
   --leading-body: 1.9;
   --leading-heading: 1.4;
   --tracking-body: 0.02em;
@@ -68,7 +68,7 @@
   --ease-out: cubic-bezier(0.2, 0.7, 0.2, 1);
   --duration-fast: 150ms; /* press, color */
   --duration-base: 300ms; /* hover */
-  --duration-slow: 600ms; /* hero, theme switch */
+  --duration-slow: 600ms; /* theme switch */
 }
 
 @media (prefers-color-scheme: dark) {

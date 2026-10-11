@@ -175,7 +175,7 @@ async function notoFamily(page: Page): Promise<string> {
 }
 
 /**
- * Sets the hero's --hero-wght, then draws the heading's own text on a canvas
+ * Sets the heading's font-weight, then draws its own text on a canvas
  * with the heading's computed font and returns the amount of ink. Glyph advances
  * barely change with weight in Japanese, so ink (stroke thickness) is measured.
  */
@@ -187,8 +187,7 @@ async function heroInkAt(
 ) {
   return page.locator("#hero-heading").evaluate(
     async (heading, { family, weight, sample }) => {
-      heading.style.transition = "none";
-      heading.style.setProperty("--hero-wght", String(weight));
+      heading.style.fontWeight = String(weight);
       const style = getComputedStyle(heading);
       const font = `${style.fontWeight} 64px ${style.fontFamily}`;
       // Load only the served face: Astro's fallback faces use local() fonts
@@ -204,17 +203,13 @@ async function heroInkAt(
       const { data } = context.getImageData(0, 0, canvas.width, canvas.height);
       let ink = 0;
       for (let i = 3; i < data.length; i += 4) ink += data[i];
-      return {
-        ink,
-        weight: style.fontWeight,
-        variation: style.fontVariationSettings,
-      };
+      return { ink, weight: style.fontWeight };
     },
     { family, weight, sample },
   );
 }
 
-test("Hero の wght の変化が、配信した和文フォントの描画の太さに連続的に反映される", async ({
+test("wght の変化が、配信した和文フォントの描画の太さに連続的に反映される", async ({
   page,
 }) => {
   await page.goto("/");
@@ -238,16 +233,11 @@ test("Hero の wght の変化が、配信した和文フォントの描画の太
   expect(sample.length).toBeGreaterThan(0);
 
   // A variable face thickens at every step; a static face renders 300, 400 and
-  // 500 identically, so this fails if the wght axis or the hero wiring is lost.
+  // 500 identically, so this fails if the wght axis is lost.
   const results = [];
   for (const weight of [300, 400, 500])
     results.push(await heroInkAt(page, family, weight, sample));
   expect(results.map(({ weight }) => weight)).toEqual(["300", "400", "500"]);
-  expect(results.map(({ variation }) => variation)).toEqual([
-    '"wght" 300',
-    '"wght" 400',
-    '"wght" 500',
-  ]);
   expect(results[1].ink).toBeGreaterThan(results[0].ink);
   expect(results[2].ink).toBeGreaterThan(results[1].ink);
 });
