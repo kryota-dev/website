@@ -1,6 +1,7 @@
 ---
 id: contact
 order: 4
+icon: ✉️
 navLabel: お問い合わせ
 label: Contact
 heading: お問い合わせ
