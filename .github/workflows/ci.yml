@@ -46,6 +46,27 @@ jobs:
       - name: Build
         run: pnpm build
 
+      - name: HTML validation (html-validate)
+        run: pnpm test:html
+
+      # Pinned by version and checksum. The tests below use it as well.
+      - name: Install lychee
+        run: |
+          archive="lychee-x86_64-unknown-linux-gnu"
+          curl -fsSLo "${RUNNER_TEMP}/lychee.tar.gz" \
+            "https://github.com/lycheeverse/lychee/releases/download/lychee-v${LYCHEE_VERSION}/${archive}.tar.gz"
+          echo "${LYCHEE_SHA256}  ${RUNNER_TEMP}/lychee.tar.gz" | sha256sum --check --strict
+          tar -xzf "${RUNNER_TEMP}/lychee.tar.gz" -C "${RUNNER_TEMP}"
+          mkdir -p "${RUNNER_TEMP}/bin"
+          install -m 0755 "${RUNNER_TEMP}/${archive}/lychee" "${RUNNER_TEMP}/bin/lychee"
+          echo "${RUNNER_TEMP}/bin" >> "$GITHUB_PATH"
+        env:
+          LYCHEE_VERSION: 0.24.2
+          LYCHEE_SHA256: 1f4e0ef7f6554a6ed33dd7ac144fb2e1bbed98598e7af973042fc5cd43951c9a
+
+      - name: Link check (lychee, internal links only)
+        run: pnpm test:links
+
       - name: Install Playwright browser
         run: pnpm exec playwright install --with-deps chromium
 
