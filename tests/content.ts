@@ -64,3 +64,25 @@ export const profile = () =>
 
 export const legal = (id: "privacy") =>
   readFrontmatter<LegalContent>(`legal/${id}.md`);
+
+export interface WorkContent {
+  order: number;
+  industry: string;
+  period: string;
+  title: string;
+  role: string;
+  highlights: string[];
+  tech: string[];
+  labels: { role: string; highlights: string; tech: string };
+}
+
+/** Works in display order (`order` ascending: the most recent first). */
+export function works(): (WorkContent & { id: string })[] {
+  return readdirSync(join(CONTENT_DIR, "works"))
+    .filter((file) => file.endsWith(".md"))
+    .map((file) => ({
+      id: file.replace(/\.md$/, ""),
+      ...readFrontmatter<WorkContent>(join("works", file)),
+    }))
+    .sort((a, b) => a.order - b.order);
+}
