@@ -7,7 +7,7 @@ export default defineConfig({
   extends: ["html-validate:recommended"],
   rules: {
     // Safari/VoiceOver drops list semantics when list-style is none,
-    // so an explicit role="list" is intentional on ul/ol (see eslint.config.js).
+    // so an explicit role="list" is intentional on ul (see eslint.config.js).
     "no-redundant-role": ["error", { exclude: ["list"] }],
   },
 });

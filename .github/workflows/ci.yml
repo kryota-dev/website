@@ -53,7 +53,7 @@ jobs:
       - name: Install lychee
         run: |
           archive="lychee-x86_64-unknown-linux-gnu"
-          curl -fsSLo "${RUNNER_TEMP}/lychee.tar.gz" \
+          curl --proto "=https" --tlsv1.2 -fsSLo "${RUNNER_TEMP}/lychee.tar.gz" \
             "https://github.com/lycheeverse/lychee/releases/download/lychee-v${LYCHEE_VERSION}/${archive}.tar.gz"
           echo "${LYCHEE_SHA256}  ${RUNNER_TEMP}/lychee.tar.gz" | sha256sum --check --strict
           tar -xzf "${RUNNER_TEMP}/lychee.tar.gz" -C "${RUNNER_TEMP}"
