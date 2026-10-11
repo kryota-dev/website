@@ -9,6 +9,7 @@
 ## 確認したこと
 
 - [ ] `pnpm lint` / `pnpm format:check` / `pnpm check` / `pnpm build` が通る
+- [ ] `pnpm test:html`（html-validate）/ `pnpm test:links`（lychee。要インストール）が通る
 - [ ] `pnpm test:a11y`（axe: ライト / ダーク × モバイル / デスクトップ）が通る
 - [ ] `pnpm test:lighthouse`（Performance ≥ 95、ほか 3 項目 = 100）が通る
 
