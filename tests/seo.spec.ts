@@ -18,7 +18,7 @@ const absolute = (path: string) => new URL(path, SITE_URL).href;
 /** Expected title and description per page, from the Markdown. */
 function expectedText(path: string) {
   if (path === "/") return { title: site.name, description: site.description };
-  const id = path.replaceAll("/", "") as "business" | "privacy";
+  const id = path.replaceAll("/", "") as "privacy";
   const page = legal(id);
   return {
     title: `${page.title} | ${site.name}`,

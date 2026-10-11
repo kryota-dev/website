@@ -6,8 +6,7 @@ import {
 } from "astro:content";
 
 /** Collections that hold exactly one entry, stored as `<collection>/index.md`. */
-type SingleCollection =
-  "site" | "hero" | "availability" | "profile" | "contact";
+type SingleCollection = "site" | "hero" | "profile";
 
 export async function getSingle<C extends SingleCollection>(
   collection: C,
@@ -21,7 +20,7 @@ export async function getSingle<C extends SingleCollection>(
 
 type OrderedCollection = Extract<
   CollectionKey,
-  "sections" | "services" | "works" | "skills"
+  "sections" | "works" | "skills"
 >;
 
 export async function getOrdered<C extends OrderedCollection>(

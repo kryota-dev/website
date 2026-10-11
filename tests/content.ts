@@ -22,7 +22,6 @@ export interface SiteContent {
   skipLink: string;
   nav: { label: string };
   theme: { legend: string; light: string; dark: string; system: string };
-  contactCta: string;
   seo: {
     locale: string;
     ogImageAlt: string;
@@ -42,24 +41,7 @@ export interface SectionContent {
   navLabel: string;
 }
 
-export interface AvailabilityContent {
-  statusLabel: string;
-  status: string;
-}
-
-export interface ContactContent {
-  fields: { id: string; label: string; required?: boolean }[];
-  submit: string;
-  unavailable: string;
-}
-
 export const site = () => readFrontmatter<SiteContent>("site/index.md");
-
-export const availability = () =>
-  readFrontmatter<AvailabilityContent>("availability/index.md");
-
-export const contact = () =>
-  readFrontmatter<ContactContent>("contact/index.md");
 
 export function sections(): SectionContent[] {
   return readdirSync(join(CONTENT_DIR, "sections"))
@@ -80,5 +62,5 @@ export interface LegalContent {
 export const profile = () =>
   readFrontmatter<ProfileContent>("profile/index.md");
 
-export const legal = (id: "business" | "privacy") =>
+export const legal = (id: "privacy") =>
   readFrontmatter<LegalContent>(`legal/${id}.md`);

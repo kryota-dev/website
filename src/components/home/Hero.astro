@@ -3,7 +3,6 @@ import { render } from "astro:content";
 import { getSingle } from "../../lib/content";
 
 const hero = await getSingle("hero");
-const availability = (await getSingle("availability")).data;
 const { Content } = await render(hero);
 ---
 
@@ -14,18 +13,6 @@ const { Content } = await render(hero);
   </h1>
   <div class="lead">
     <Content />
-  </div>
-  <div class="actions">
-    <a class="cta" href="#contact">
-      {hero.data.cta}
-      <span class="arrow" aria-hidden="true">
-        →
-      </span>
-    </a>
-    <p class="status">
-      <span class="dot" aria-hidden="true"></span>
-      {availability.status}
-    </p>
   </div>
 </section>
 
@@ -91,77 +78,6 @@ const { Content } = await render(hero);
       max-inline-size: 34em;
       margin-block-start: var(--space-8);
       color: var(--color-muted);
-    }
-
-    .actions {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      gap: var(--space-4) var(--space-6);
-      margin-block-start: var(--space-12);
-    }
-
-    .cta {
-      display: inline-flex;
-      align-items: center;
-      gap: var(--space-3);
-      min-block-size: 3.25rem;
-      padding-inline: var(--space-8);
-      border-radius: var(--radius-pill);
-      background-color: var(--color-accent);
-      color: var(--color-on-accent);
-      font-weight: 700;
-      text-decoration: none;
-      transition:
-        background-color var(--duration-fast) var(--ease-out),
-        transform var(--duration-fast) var(--ease-out);
-    }
-
-    .cta:hover {
-      background-color: var(--color-accent-hover);
-      color: var(--color-on-accent);
-    }
-
-    .cta:active {
-      transform: scale(0.97);
-    }
-
-    .arrow {
-      display: inline-block;
-      transition: transform var(--duration-base) var(--ease-out);
-    }
-
-    .cta:hover .arrow {
-      transform: translateX(4px);
-    }
-
-    .status {
-      display: inline-flex;
-      align-items: center;
-      gap: var(--space-3);
-      color: var(--color-muted);
-      font-size: var(--text-sm);
-    }
-
-    .dot {
-      inline-size: 0.5rem;
-      block-size: 0.5rem;
-      border-radius: var(--radius-pill);
-      background-color: var(--color-accent);
-
-      /* Two cycles (4.8s): stops within 5s (WCAG 2.2.2). */
-      animation: pulse 2.4s ease-in-out 2;
-    }
-
-    @keyframes pulse {
-      0%,
-      100% {
-        box-shadow: var(--ring-rest);
-      }
-
-      50% {
-        box-shadow: var(--ring-pulse);
-      }
     }
   }
 </style>

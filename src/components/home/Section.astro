@@ -3,7 +3,7 @@ import { render } from "astro:content";
 import { getSection } from "../../lib/content";
 
 interface Props {
-  id: "services" | "works" | "skills" | "profile" | "contact";
+  id: "works" | "skills" | "profile" | "contact";
 }
 
 const section = await getSection(Astro.props.id);

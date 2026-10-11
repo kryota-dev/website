@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 import { sections, site } from "./content";
 
 const content = site();
-const navSections = sections().filter(({ id }) => id !== "contact");
+const navSections = sections();
 
 test("最初の Tab でスキップリンクが見え、Enter で本文に移る", async ({
   page,
@@ -29,7 +29,7 @@ test("ナビにはコンテンツのセクションが順に並ぶ", async ({ pa
   }
 });
 
-test("ヘッダーは ロゴ → ナビ → テーマ切替 → 相談ボタン の順にフォーカスする", async ({
+test("ヘッダーは ロゴ → ナビ → テーマ切替 の順にフォーカスし、ほかのボタンを持たない", async ({
   page,
 }) => {
   await page.goto("/");
@@ -40,11 +40,14 @@ test("ヘッダーは ロゴ → ナビ → テーマ切替 → 相談ボタン 
       nav.getByRole("link", { name: section.navLabel }),
     ),
     page.getByRole("radio", { name: content.theme.system }),
-    page.getByRole("banner").getByRole("link", { name: content.contactCta }),
   ];
   await page.keyboard.press("Tab"); // skip link
   for (const target of order) {
     await page.keyboard.press("Tab");
     await expect(target).toBeFocused();
   }
+  // Only the logo and the navigation are links in the header.
+  await expect(page.getByRole("banner").getByRole("link")).toHaveCount(
+    navSections.length + 1,
+  );
 });
