@@ -4,12 +4,19 @@ import { getSingle } from "../../lib/content";
 
 const hero = await getSingle("hero");
 const { Content } = await render(hero);
+// A line break in the heading is kept as <br> (the copy decides where it breaks).
+const headingLines = hero.data.heading.split("\n");
 ---
 
 <section class="hero" aria-labelledby="hero-heading" data-hero>
   <p class="byline">{hero.data.byline}</p>
   <h1 id="hero-heading" class="heading">
-    {hero.data.heading}
+    {headingLines.map((line, index) => (
+      <>
+        {index > 0 && <br />}
+        {line}
+      </>
+    ))}
   </h1>
   <div class="lead">
     <Content />

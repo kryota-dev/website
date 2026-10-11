@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { readFrontmatter } from "./content";
 
 const MIN_WEIGHT = 200;
 const MAX_WEIGHT = 900;
@@ -70,4 +71,15 @@ test("Hero は添え書き・見出し・リード文だけで、問い合わせ
   await expect(hero.getByRole("button")).toHaveCount(0);
   await expect(hero.locator('a[href*="#contact"]')).toHaveCount(0);
   await expect(hero.locator(":scope > *")).toHaveCount(3);
+});
+
+test("見出しの改行は hero/index.md のとおりに <br> で入る", async ({
+  page,
+}) => {
+  const { heading } = readFrontmatter<{ heading: string }>("hero/index.md");
+  const lines = heading.split("\n");
+  await page.goto("/");
+  const h1 = page.locator("#hero-heading");
+  await expect(h1.locator("br")).toHaveCount(lines.length - 1);
+  expect((await h1.innerText()).split("\n")).toEqual(lines);
 });

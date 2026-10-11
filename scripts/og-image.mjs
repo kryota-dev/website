@@ -76,7 +76,15 @@ function headingSize(heading) {
     (FOOTER_GAP + FOOTER_RULE + SMALL_TEXT * SMALL_LINE_HEIGHT) -
     MIN_GAP * 2;
   for (const size of HEADING_SIZES) {
-    const lines = Math.ceil(estimateWidth(heading, size) / CONTENT_WIDTH);
+    // Each line of the heading (split at "\n") wraps on its own.
+    const lines = heading
+      .split("\n")
+      .reduce(
+        (sum, line) =>
+          sum +
+          Math.max(1, Math.ceil(estimateWidth(line, size) / CONTENT_WIDTH)),
+        0,
+      );
     if (lines * size * HEADING_LINE_HEIGHT <= available) return size;
   }
   throw new Error(
@@ -173,11 +181,12 @@ export async function renderOgImage(text, source) {
         "div",
         {
           display: "flex",
+          flexDirection: "column",
           fontSize: size,
           fontWeight: 700,
           lineHeight: HEADING_LINE_HEIGHT,
         },
-        text.heading,
+        text.heading.split("\n").map((line) => el("div", {}, line)),
       ),
       el(
         "div",
