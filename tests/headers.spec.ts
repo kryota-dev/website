@@ -254,9 +254,15 @@ test.describe("デプロイ先のヘッダーの確認", () => {
   });
 
   test("検索の対象にするホストで noindex が付いていれば検出する", () => {
-    expect(headerProblems(served(), expected, { noindex: false })).toEqual([
-      "unexpected X-Robots-Tag: noindex",
-    ]);
+    // Robots rules are case-insensitive, and "none" means noindex, nofollow.
+    for (const value of ["noindex", "NOINDEX", "nofollow, none"]) {
+      const robots = indexable();
+      robots.set("x-robots-tag", value);
+      expect(headerProblems(robots, expected, { noindex: false })).toEqual([
+        "unexpected X-Robots-Tag: noindex",
+      ]);
+      expect(headerProblems(robots, expected, { noindex: true })).toEqual([]);
+    }
   });
 
   test("_headers に必須のヘッダーが無ければ検出する", () => {
@@ -276,21 +282,31 @@ test.describe("デプロイ先のヘッダーの確認", () => {
   });
 
   test.describe("配信の反映を待つ", () => {
-    const URL = "https://kryota.dev/";
+    const SITE_URL = "https://kryota.dev/";
+
+    type Fetch = (url: string, init?: RequestInit) => Promise<Response>;
 
     /** Answers each fetch with the next response, then repeats the last. */
     function responses(...list: Response[]) {
-      let calls = 0;
-      const fetch = async () => list[Math.min(calls++, list.length - 1)];
-      return { fetch, calls: () => calls };
+      const inits: (RequestInit | undefined)[] = [];
+      const fetch: Fetch = async (_url, init) => {
+        inits.push(init);
+        return list[Math.min(inits.length - 1, list.length - 1)];
+      };
+      return { fetch, calls: () => inits.length, inits };
     }
-    const options = (fetch: () => Promise<Response>, attempts = 3) => ({
-      noindex: false,
-      attempts,
-      intervalMs: 0,
-      fetch,
-      log: () => {},
-    });
+    function options(fetch: Fetch, attempts = 3) {
+      const logs: string[] = [];
+      return {
+        noindex: false,
+        attempts,
+        intervalMs: 0,
+        fetch,
+        log: (message: string) => logs.push(message),
+        logs,
+      };
+    }
+    const ok = () => new Response("<p>ok</p>", { headers: [...expected] });
     const stale = () =>
       new Response(null, {
         headers: [...expected].map(([name, value]) =>
@@ -304,46 +320,87 @@ test.describe("デプロイ先のヘッダーの確認", () => {
       const fake = responses(
         stale(),
         new Response(null, { status: 404 }),
-        new Response(null, { headers: [...expected] }),
+        ok(),
       );
-      const result = await checkUntilServed(URL, expected, options(fake.fetch));
+      const result = await checkUntilServed(
+        SITE_URL,
+        expected,
+        options(fake.fetch),
+      );
       expect(result).toEqual({ attempts: 3, problems: [] });
       expect(fake.calls()).toBe(3);
     });
 
-    test("上限まで食い違えば、最後の食い違いを返して止まる", async () => {
+    test("上限まで食い違えば、試行ごとの食い違いを残し、最後の食い違いを返して止まる", async () => {
       const fake = responses(stale());
-      const result = await checkUntilServed(
-        URL,
-        expected,
-        options(fake.fetch, 4),
-      );
-      expect(result.attempts).toBe(4);
-      expect(result.problems).toEqual([
-        "content-security-policy differs: default-src 'self'",
+      const opts = options(fake.fetch, 3);
+      const result = await checkUntilServed(SITE_URL, expected, opts);
+      const differs = "content-security-policy differs: default-src 'self'";
+      expect(result).toEqual({ attempts: 3, problems: [differs] });
+      expect(fake.calls()).toBe(3);
+      // The last attempt is reported by the caller, not logged here.
+      expect(opts.logs).toEqual([
+        `Attempt 1/3: ${differs}`,
+        `Attempt 2/3: ${differs}`,
       ]);
-      expect(fake.calls()).toBe(4);
     });
 
-    test("接続に失敗しても止まらず、次の試行で通れば通る", async () => {
-      let calls = 0;
-      const fetch = async () => {
-        calls++;
-        if (calls === 1) throw new TypeError("fetch failed");
-        return new Response(null, { headers: [...expected] });
+    test("接続に失敗・中断しても止まらず、原因を残して次の試行に進む", async () => {
+      const errors = [
+        new TypeError("fetch failed", { cause: new Error("ENOTFOUND") }),
+        new DOMException("The operation was aborted", "TimeoutError"),
+      ];
+      const fetch: Fetch = async () => {
+        const error = errors.shift();
+        if (error) throw error;
+        return ok();
       };
-      const result = await checkUntilServed(URL, expected, options(fetch));
-      expect(result).toEqual({ attempts: 2, problems: [] });
+      const opts = options(fetch);
+      const result = await checkUntilServed(SITE_URL, expected, opts);
+      expect(result).toEqual({ attempts: 3, problems: [] });
+      expect(opts.logs[0]).toContain("ENOTFOUND");
+      expect(opts.logs[1]).toContain("TimeoutError");
     });
 
-    test("成功でない応答は、その状態を食い違いとして扱う", async () => {
-      const fake = responses(new Response(null, { status: 503 }));
-      const result = await checkUntilServed(
-        URL,
+    test("試行ごとにタイムアウトを付け、リダイレクトを追わない", async () => {
+      const fake = responses(ok());
+      await checkUntilServed(SITE_URL, expected, options(fake.fetch));
+      expect(fake.inits[0]?.redirect).toBe("manual");
+      expect(fake.inits[0]?.signal).toBeInstanceOf(AbortSignal);
+    });
+
+    test("成功でない応答（リダイレクトを含む）は、その状態を食い違いとして扱う", async () => {
+      for (const status of [503, 301]) {
+        const fake = responses(new Response(null, { status }));
+        const result = await checkUntilServed(
+          SITE_URL,
+          expected,
+          options(fake.fetch, 1),
+        );
+        expect(result.problems).toEqual([`${SITE_URL} returned ${status}`]);
+      }
+    });
+
+    test("応答の本文は読み捨てる", async () => {
+      const response = ok();
+      await checkUntilServed(
+        SITE_URL,
         expected,
-        options(fake.fetch, 1),
+        options(responses(response).fetch),
       );
-      expect(result.problems).toEqual([`${URL} returned 503`]);
+      expect(response.bodyUsed || response.body?.locked).toBeTruthy();
+    });
+
+    test("試行の回数が正の整数でなければ失敗する", async () => {
+      for (const attempts of [0, -1, 1.5, Number.NaN, Infinity]) {
+        await expect(
+          checkUntilServed(
+            SITE_URL,
+            expected,
+            options(responses(ok()).fetch, attempts),
+          ),
+        ).rejects.toThrow(/attempts/);
+      }
     });
   });
 });
