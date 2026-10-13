@@ -1,6 +1,13 @@
 ---
 import { render } from "astro:content";
 import { getSingle } from "../../lib/content";
+import {
+  EXTERNAL_LINK_REL,
+  EXTERNAL_LINK_TARGET,
+  NEW_TAB_NOTE,
+  NEW_TAB_NOTE_CLASS,
+  isExternalHref,
+} from "../../lib/external-link";
 import EntryList from "./EntryList.astro";
 import Section from "./Section.astro";
 import SubHeading from "./SubHeading.astro";
@@ -42,13 +49,24 @@ const { Content } = await render(profile);
         <div class="block-links">
           <SubHeading>{linksLabel}</SubHeading>
           <ul class="links" role="list">
-            {links.map(({ label, href }) => (
-              <li>
-                <a class="link" href={href}>
-                  {label}
-                </a>
-              </li>
-            ))}
+            {links.map(({ label, href }) => {
+              const external = isExternalHref(href);
+              return (
+                <li>
+                  <a
+                    class="link"
+                    href={href}
+                    target={external ? EXTERNAL_LINK_TARGET : undefined}
+                    rel={external ? EXTERNAL_LINK_REL.join(" ") : undefined}
+                  >
+                    {label}
+                    {external && (
+                      <span class={NEW_TAB_NOTE_CLASS}>{NEW_TAB_NOTE}</span>
+                    )}
+                  </a>
+                </li>
+              );
+            })}
           </ul>
         </div>
       )}

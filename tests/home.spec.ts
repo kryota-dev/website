@@ -1,4 +1,5 @@
-import { expect, test, type Locator, type Page } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
+import { isExternalHref } from "../src/lib/external-link";
 import {
   markdownLinks,
   profile,
@@ -7,6 +8,7 @@ import {
   skills,
   works,
 } from "./content";
+import { expectExternalLink } from "./external-link";
 import { listBuiltPages } from "./pages";
 
 /** Fixed by the requirements (AC-001), not read from the content. */
@@ -19,22 +21,6 @@ const MIN_HEADING_GAP = 32;
 test.beforeEach(async ({ page }) => {
   await page.goto("/");
 });
-
-/** The ↗ marker that base.css adds after a link that leaves the site. */
-async function expectExternalMarker(link: Locator, name: string) {
-  const marker = await link.evaluate((el) => {
-    const style = getComputedStyle(el, "::after");
-    return {
-      content: style.content,
-      display: style.display,
-      visibility: style.visibility,
-    };
-  });
-  expect(marker.content).toContain("↗");
-  expect(marker.display).not.toBe("none");
-  expect(marker.visibility).toBe("visible");
-  await expect(link).toHaveAccessibleName(name);
-}
 
 test("セクションは Hero → Profile → Works → Skills → Contact の順に並ぶ", async ({
   page,
@@ -78,7 +64,7 @@ test.describe("Contact", () => {
     await expect(contact(page).getByRole("button")).toHaveCount(0);
   });
 
-  test("本文のリンクがそのまま並び、外部リンクには ↗ が付いて名前には含まれない", async ({
+  test("本文のリンクがそのまま並び、外部リンクは ↗ が付いて新しいタブで開く", async ({
     page,
   }) => {
     const expected = markdownLinks(readBody("sections/contact.md"));
@@ -88,9 +74,7 @@ test.describe("Contact", () => {
     for (const [index, { label, href }] of expected.entries()) {
       const link = links.nth(index);
       await expect(link).toHaveAttribute("href", href);
-      await expectExternalMarker(link, label);
-      // Same tab, like the other links on the site.
-      expect((await link.getAttribute("target")) ?? "_self").toBe("_self");
+      await expectExternalLink(link, label);
     }
   });
 });
@@ -170,8 +154,8 @@ test("Profile は職務要約の後に、資格・活動・外部リンクをデ
   await expect(links).toHaveCount(content.links.length);
   for (const [index, { label, href }] of content.links.entries()) {
     await expect(links.nth(index)).toHaveAttribute("href", href);
-    if (href.startsWith("https://")) {
-      await expectExternalMarker(links.nth(index), label);
+    if (isExternalHref(href)) {
+      await expectExternalLink(links.nth(index), label);
     } else {
       await expect(links.nth(index)).toHaveAccessibleName(label);
     }
