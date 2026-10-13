@@ -225,7 +225,7 @@ jobs:
         with:
           name: site
 
-      # workers.dev only until the custom domain is attached.
+      # Serves kryota.dev (routes in wrangler.jsonc) and workers.dev.
       - name: Deploy
         run: pnpm exec wrangler deploy
         env:
