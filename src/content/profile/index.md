@@ -13,14 +13,15 @@ activities:
   - period: 2024年11月〜2025年5月
     title: TSKaigi 2025 運営スタッフ
     detail: Web サイトチーム・当日スタッフ
-  - period: 2024年11月
+  - period: 2024年7月〜2024年11月
     title: TSKaigi Kansai 2024 運営スタッフ
     detail: プログラムチーム：コンテンツ企画・プロポーザル選考・当日の司会進行
   - period: 2022年5月〜2023年2月
     title: 日本マイクロソフトとの産学連携で、小中高生向けの Web 学習教材を開発
     detail: フロントエンド開発・技術面の提案を担当。プレスリリースで公開
   - period: 2022年3月
-    title: 就職作品学内コンペ 構成力賞
+    title: HAL EVENT WEEK 2022 銅賞・就職作品学内コンペ 構成力賞
+    detail: アルバイトのシフト管理システムを制作（学内の進級制作展）
 linksLabel: 外部リンク
 links:
   - label: GitHub
