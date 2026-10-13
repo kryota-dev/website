@@ -5,7 +5,7 @@ import { satteri } from "@astrojs/markdown-satteri";
 import sitemap from "@astrojs/sitemap";
 import { defineConfig, fontProviders } from "astro/config";
 import { FONT_PASS, NOTO_SOURCE, NOTO_SUBSET } from "./scripts/font-paths.mjs";
-import { externalLinksPlugin } from "./src/lib/external-link.ts";
+import { markdownProcessorOptions } from "./src/lib/markdown.ts";
 
 /**
  * The final build serves the subset made by scripts/subset-fonts.mjs; the
@@ -57,7 +57,7 @@ export default defineConfig({
   adapter: cloudflare({ imageService: "compile" }),
   integrations: [requireTwoPassBuild, sitemap()],
   markdown: {
-    processor: satteri({ hastPlugins: [externalLinksPlugin] }),
+    processor: satteri(markdownProcessorOptions),
   },
   fonts: [
     {

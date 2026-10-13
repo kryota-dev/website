@@ -12,7 +12,7 @@ importers:
         specifier: ^14.3.4
         version: 14.3.4(@types/node@24.19.1)(astro@7.3.7(@types/node@24.19.1)(yaml@2.9.1))(esbuild@0.28.2)(wrangler@4.148.0(@types/node@24.19.1))(yaml@2.9.1)
       '@astrojs/markdown-satteri':
-        specifier: ^0.4.3
+        specifier: 0.4.3
         version: 0.4.3
       '@astrojs/sitemap':
         specifier: ^3.7.4
