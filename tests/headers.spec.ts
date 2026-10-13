@@ -5,6 +5,7 @@ import { join } from "node:path";
 import { expect, test } from "@playwright/test";
 import {
   expectedHeaders,
+  expectsNoindex,
   headerProblems,
 } from "../scripts/check-deployed-headers.mjs";
 import {
@@ -224,36 +225,52 @@ test.describe("デプロイ先のヘッダーの確認", () => {
     readFileSync("dist/client/_headers", "utf8"),
   );
   const served = () => new Headers([...expected, ["x-robots-tag", "noindex"]]);
+  const indexable = () => new Headers([...expected]);
 
   test("_headers のとおりに返れば問題なし", () => {
-    expect(headerProblems(served(), expected)).toEqual([]);
+    expect(headerProblems(served(), expected, { noindex: true })).toEqual([]);
+    expect(headerProblems(indexable(), expected, { noindex: false })).toEqual(
+      [],
+    );
   });
 
   test("欠けたヘッダー・違う値・noindex の欠落を検出する", () => {
     const missing = served();
     missing.delete("strict-transport-security");
-    expect(headerProblems(missing, expected)).toEqual([
+    expect(headerProblems(missing, expected, { noindex: true })).toEqual([
       "missing strict-transport-security",
     ]);
 
     const weakened = served();
     weakened.set("content-security-policy", "default-src *");
-    expect(headerProblems(weakened, expected)).toEqual([
+    expect(headerProblems(weakened, expected, { noindex: true })).toEqual([
       "content-security-policy differs: default-src *",
     ]);
 
-    const indexed = served();
-    indexed.delete("x-robots-tag");
-    expect(headerProblems(indexed, expected)).toEqual([
+    expect(headerProblems(indexable(), expected, { noindex: true })).toEqual([
       "missing X-Robots-Tag: noindex",
+    ]);
+  });
+
+  test("検索の対象にするホストで noindex が付いていれば検出する", () => {
+    expect(headerProblems(served(), expected, { noindex: false })).toEqual([
+      "unexpected X-Robots-Tag: noindex",
     ]);
   });
 
   test("_headers に必須のヘッダーが無ければ検出する", () => {
     const partial = new Map(expected);
     partial.delete("referrer-policy");
-    expect(headerProblems(served(), partial)).toContain(
+    expect(headerProblems(served(), partial, { noindex: true })).toContain(
       "referrer-policy is not in _headers",
     );
+  });
+
+  test("noindex を期待するのは workers.dev のホストだけ", () => {
+    expect(
+      expectsNoindex("https://pr-1-kryota-dev-website.example.workers.dev/"),
+    ).toBe(true);
+    expect(expectsNoindex("https://kryota.dev/")).toBe(false);
+    expect(expectsNoindex("https://workers.dev.example.com/")).toBe(false);
   });
 });

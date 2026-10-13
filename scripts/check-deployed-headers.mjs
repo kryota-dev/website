@@ -1,7 +1,8 @@
 // @ts-check
-// Checks that a deployed URL (a workers.dev Preview) serves every header of
-// the "/*" rule in dist/client/_headers with the same value, including the
-// generated CSP, plus the workers.dev noindex.
+// Checks that a deployed URL (a Preview or production) serves every header
+// of the "/*" rule in dist/client/_headers with the same value, including
+// the generated CSP. workers.dev hosts must carry noindex; other hosts must
+// not.
 // Usage: node scripts/check-deployed-headers.mjs <url>
 import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
@@ -33,12 +34,21 @@ export function expectedHeaders(text) {
 }
 
 /**
+ * Whether the host is kept out of search results (public/_headers).
+ * @param {string} url
+ */
+export function expectsNoindex(url) {
+  return new URL(url).hostname.endsWith(".workers.dev");
+}
+
+/**
  * Lists what the response gets wrong; an empty list means it passes.
  * @param {Headers} actual
  * @param {Map<string, string>} expected
+ * @param {{ noindex: boolean }} options whether X-Robots-Tag: noindex is required or forbidden
  * @returns {string[]}
  */
-export function headerProblems(actual, expected) {
+export function headerProblems(actual, expected, { noindex }) {
   const problems = [];
   for (const name of REQUIRED_HEADERS) {
     if (!expected.has(name)) problems.push(`${name} is not in _headers`);
@@ -48,10 +58,9 @@ export function headerProblems(actual, expected) {
     if (served === null) problems.push(`missing ${name}`);
     else if (served !== value) problems.push(`${name} differs: ${served}`);
   }
-  // workers.dev hosts must stay out of search results (public/_headers).
-  if (!/\bnoindex\b/.test(actual.get("x-robots-tag") ?? "")) {
-    problems.push("missing X-Robots-Tag: noindex");
-  }
+  const indexed = !/\bnoindex\b/.test(actual.get("x-robots-tag") ?? "");
+  if (noindex && indexed) problems.push("missing X-Robots-Tag: noindex");
+  if (!noindex && !indexed) problems.push("unexpected X-Robots-Tag: noindex");
   return problems;
 }
 
@@ -63,10 +72,12 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const response = await fetch(url);
   if (!response.ok) throw new Error(`${url} returned ${response.status}`);
 
-  const problems = headerProblems(response.headers, expected);
+  const noindex = expectsNoindex(url);
+  const problems = headerProblems(response.headers, expected, { noindex });
   if (problems.length > 0) {
     console.error(`${url}:\n- ${problems.join("\n- ")}`);
     process.exit(1);
   }
-  console.log(`${url}: ${expected.size} headers and noindex OK`);
+  const robots = noindex ? "noindex" : "no noindex";
+  console.log(`${url}: ${expected.size} headers and ${robots} OK`);
 }
