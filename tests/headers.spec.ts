@@ -23,6 +23,8 @@ const EXPECTED_VALUES = {
     "camera=(), geolocation=(), microphone=(), payment=(), usb=()",
   "cross-origin-opener-policy": "same-origin",
 };
+/** Where Cloudflare's automatic setup loads the Web Analytics beacon from. */
+const WEB_ANALYTICS_ORIGIN = "https://static.cloudflareinsights.com";
 /** One year, the usual HSTS minimum. */
 const MIN_HSTS_MAX_AGE = 31_536_000;
 const REQUIRED_DIRECTIVES = [
@@ -133,9 +135,15 @@ test.describe("インライン要素の hash", () => {
       styles: [hash("c")],
     });
     expect(csp).toContain(
-      `script-src 'self' ${[hash("a"), hash("b")].sort().join(" ")};`,
+      `script-src 'self' ${[hash("a"), hash("b")].sort().join(" ")} ${WEB_ANALYTICS_ORIGIN};`,
     );
     expect(csp).toContain(`style-src 'self' ${hash("c")};`);
+  });
+
+  test("Web Analytics の beacon は script-src のオリジンだけで許可し、送信先は 'self' のまま", () => {
+    const csp = buildCsp({ scripts: [], styles: [] });
+    expect(csp).toContain(`script-src 'self' ${WEB_ANALYTICS_ORIGIN};`);
+    expect(csp).toContain("connect-src 'self';");
   });
 });
 
