@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { expect, test } from "@playwright/test";
 import {
+  checkUntilServed,
   expectedHeaders,
   expectsNoindex,
   headerProblems,
@@ -272,5 +273,77 @@ test.describe("デプロイ先のヘッダーの確認", () => {
     ).toBe(true);
     expect(expectsNoindex("https://kryota.dev/")).toBe(false);
     expect(expectsNoindex("https://workers.dev.example.com/")).toBe(false);
+  });
+
+  test.describe("配信の反映を待つ", () => {
+    const URL = "https://kryota.dev/";
+
+    /** Answers each fetch with the next response, then repeats the last. */
+    function responses(...list: Response[]) {
+      let calls = 0;
+      const fetch = async () => list[Math.min(calls++, list.length - 1)];
+      return { fetch, calls: () => calls };
+    }
+    const options = (fetch: () => Promise<Response>, attempts = 3) => ({
+      noindex: false,
+      attempts,
+      intervalMs: 0,
+      fetch,
+      log: () => {},
+    });
+    const stale = () =>
+      new Response(null, {
+        headers: [...expected].map(([name, value]) =>
+          name === "content-security-policy"
+            ? [name, "default-src 'self'"]
+            : [name, value],
+        ),
+      });
+
+    test("反映されれば、その時点で通る", async () => {
+      const fake = responses(
+        stale(),
+        new Response(null, { status: 404 }),
+        new Response(null, { headers: [...expected] }),
+      );
+      const result = await checkUntilServed(URL, expected, options(fake.fetch));
+      expect(result).toEqual({ attempts: 3, problems: [] });
+      expect(fake.calls()).toBe(3);
+    });
+
+    test("上限まで食い違えば、最後の食い違いを返して止まる", async () => {
+      const fake = responses(stale());
+      const result = await checkUntilServed(
+        URL,
+        expected,
+        options(fake.fetch, 4),
+      );
+      expect(result.attempts).toBe(4);
+      expect(result.problems).toEqual([
+        "content-security-policy differs: default-src 'self'",
+      ]);
+      expect(fake.calls()).toBe(4);
+    });
+
+    test("接続に失敗しても止まらず、次の試行で通れば通る", async () => {
+      let calls = 0;
+      const fetch = async () => {
+        calls++;
+        if (calls === 1) throw new TypeError("fetch failed");
+        return new Response(null, { headers: [...expected] });
+      };
+      const result = await checkUntilServed(URL, expected, options(fetch));
+      expect(result).toEqual({ attempts: 2, problems: [] });
+    });
+
+    test("成功でない応答は、その状態を食い違いとして扱う", async () => {
+      const fake = responses(new Response(null, { status: 503 }));
+      const result = await checkUntilServed(
+        URL,
+        expected,
+        options(fake.fetch, 1),
+      );
+      expect(result.problems).toEqual([`${URL} returned 503`]);
+    });
   });
 });
