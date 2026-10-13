@@ -1,5 +1,4 @@
 import { expect, test, type Page } from "@playwright/test";
-import { isExternalHref } from "../src/lib/external-link";
 import {
   markdownLinks,
   profile,
@@ -154,7 +153,7 @@ test("Profile は職務要約の後に、資格・活動・外部リンクをデ
   await expect(links).toHaveCount(content.links.length);
   for (const [index, { label, href }] of content.links.entries()) {
     await expect(links.nth(index)).toHaveAttribute("href", href);
-    if (isExternalHref(href)) {
+    if (href.startsWith("https://")) {
       await expectExternalLink(links.nth(index), label);
     } else {
       await expect(links.nth(index)).toHaveAccessibleName(label);

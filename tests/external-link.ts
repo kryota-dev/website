@@ -25,10 +25,18 @@ export async function expectExternalLink(link: Locator, label: string) {
   );
 
   const note = link.locator(".visually-hidden");
+  await expect(note).toHaveCount(1);
   await expect(note).toHaveText(NEW_TAB_NOTE);
+  // Hidden by a 1px box that clips its text, not removed from the a11y tree.
   const box = await note.boundingBox();
   expect(box?.width).toBeLessThanOrEqual(1);
   expect(box?.height).toBeLessThanOrEqual(1);
+  const clipping = await note.evaluate((el) => {
+    const style = getComputedStyle(el);
+    return { clipPath: style.clipPath, overflow: style.overflow };
+  });
+  expect(clipping.clipPath).not.toBe("none");
+  expect(clipping.overflow).toBe("hidden");
 
   const marker = await link.evaluate((el) => {
     const style = getComputedStyle(el, "::after");
