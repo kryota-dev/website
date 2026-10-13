@@ -75,6 +75,31 @@ for (const path of pages) {
   });
 }
 
+test("Cloudflare が挿入する版付きの beacon を読み込んでも CSP の違反がない", async ({
+  page,
+}) => {
+  await serveWithCsp(page);
+  let served = false;
+  await page.route("https://static.cloudflareinsights.com/**", (route) => {
+    served = true;
+    return route.fulfill({ contentType: "text/javascript", body: "" });
+  });
+  await page.goto("/");
+  // Same shape as the automatic setup: the URL carries a version path.
+  await page.evaluate(
+    () =>
+      new Promise((resolve, reject) => {
+        const script = document.createElement("script");
+        script.src = "https://static.cloudflareinsights.com/beacon.min.js/v1";
+        script.onload = resolve;
+        script.onerror = reject;
+        document.body.append(script);
+      }),
+  );
+  expect(served).toBe(true);
+  expect(await violations(page)).toEqual([]);
+});
+
 test("テーマの切り替えでも CSP の違反がない", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "no-preference" });
   await serveWithCsp(page);
