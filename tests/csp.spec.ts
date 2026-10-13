@@ -75,29 +75,64 @@ for (const path of pages) {
   });
 }
 
-test("Cloudflare が挿入する版付きの beacon を読み込んでも CSP の違反がない", async ({
-  page,
-}) => {
-  await serveWithCsp(page);
-  let served = false;
-  await page.route("https://static.cloudflareinsights.com/**", (route) => {
-    served = true;
-    return route.fulfill({ contentType: "text/javascript", body: "" });
-  });
-  await page.goto("/");
-  // Same shape as the automatic setup: the URL carries a version path.
-  await page.evaluate(
-    () =>
-      new Promise((resolve, reject) => {
+const BEACON_HOST = "https://static.cloudflareinsights.com";
+
+/**
+ * Appends a module script, as the automatic setup injects the beacon, and
+ * reports whether it loaded. Every external script is answered locally.
+ */
+async function loadModule(page: Page, src: string) {
+  return page.evaluate(
+    (url) =>
+      new Promise<"loaded" | "blocked">((resolve) => {
         const script = document.createElement("script");
-        script.src = "https://static.cloudflareinsights.com/beacon.min.js/v1";
-        script.onload = resolve;
-        script.onerror = reject;
+        script.type = "module";
+        script.src = url;
+        script.onload = () => resolve("loaded");
+        script.onerror = () => resolve("blocked");
         document.body.append(script);
       }),
+    src,
   );
-  expect(served).toBe(true);
-  expect(await violations(page)).toEqual([]);
+}
+
+test.describe("Web Analytics の beacon", () => {
+  test.beforeEach(async ({ page }) => {
+    await serveWithCsp(page);
+    // The site is served over http, so every https URL is external.
+    await page.route(/^https:\/\//, (route) =>
+      route.fulfill({
+        contentType: "text/javascript",
+        headers: { "access-control-allow-origin": "*" },
+        body: "",
+      }),
+    );
+    await page.goto("/");
+  });
+
+  test("版付きと版なしの beacon は読み込め、CSP の違反がない", async ({
+    page,
+  }) => {
+    expect(await loadModule(page, `${BEACON_HOST}/beacon.min.js/v1`)).toBe(
+      "loaded",
+    );
+    expect(await loadModule(page, `${BEACON_HOST}/beacon.min.js`)).toBe(
+      "loaded",
+    );
+    expect(await violations(page)).toEqual([]);
+  });
+
+  test("同じホストの別のパスと、別のオリジンの script は拒否する", async ({
+    page,
+  }) => {
+    const blocked = [`${BEACON_HOST}/other.js`, "https://example.com/x.js"];
+    for (const src of blocked) {
+      expect(await loadModule(page, src)).toBe("blocked");
+    }
+    await expect
+      .poll(() => violations(page))
+      .toEqual(blocked.map((src) => expect.stringContaining(src)));
+  });
 });
 
 test("テーマの切り替えでも CSP の違反がない", async ({ page }) => {
