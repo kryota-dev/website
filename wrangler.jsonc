@@ -4,7 +4,8 @@
   "compatibility_flags": ["global_fetch_strictly_public"],
   "name": "kryota-dev-website",
   // Serve production on kryota.dev. workers.dev and the Previews stay
-  // available, kept out of search results by public/_headers.
+  // available, kept out of search results by public/_headers. The Previews
+  // live on a separate Worker; see the preview job in ci.yml.
   "routes": [{ "pattern": "kryota.dev", "custom_domain": true }],
   "workers_dev": true,
   "preview_urls": true,

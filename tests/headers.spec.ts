@@ -275,7 +275,9 @@ test.describe("デプロイ先のヘッダーの確認", () => {
 
   test("noindex を期待するのは workers.dev のホストだけ", () => {
     expect(
-      expectsNoindex("https://pr-1-kryota-dev-website.example.workers.dev/"),
+      expectsNoindex(
+        "https://pr-1-kryota-dev-website-preview.example.workers.dev/",
+      ),
     ).toBe(true);
     expect(expectsNoindex("https://kryota.dev/")).toBe(false);
     expect(expectsNoindex("https://workers.dev.example.com/")).toBe(false);
