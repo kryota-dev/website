@@ -231,3 +231,9 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+      # The canonical host must serve every header and stay indexable.
+      - name: Check the security headers
+        run: node scripts/check-deployed-headers.mjs "$SITE_URL"
+        env:
+          SITE_URL: https://kryota.dev/
