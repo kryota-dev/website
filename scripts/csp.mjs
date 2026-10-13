@@ -12,12 +12,18 @@ import { Parser } from "htmlparser2";
 const DIST_DIR = "dist/client";
 
 /**
- * Cloudflare Web Analytics (automatic setup) injects its beacon from here.
- * The script URL carries a version path, and a CSP path source must match
- * exactly, so the origin is allowed. The beacon reports to /cdn-cgi/rum on
- * this site, which connect-src 'self' already covers.
+ * The beacon Cloudflare Web Analytics (automatic setup) injects. Its URL
+ * carries a version path (/beacon.min.js/v<version>), which the source
+ * ending in "/" matches as a prefix; the bare URL is the documented one.
+ * Nothing else on that host is allowed. The beacon reports to /cdn-cgi/rum
+ * on this site, which connect-src 'self' already covers.
  */
-const WEB_ANALYTICS_ORIGIN = "https://static.cloudflareinsights.com";
+const WEB_ANALYTICS_BEACON =
+  "https://static.cloudflareinsights.com/beacon.min.js";
+const WEB_ANALYTICS_SOURCES = [
+  WEB_ANALYTICS_BEACON,
+  `${WEB_ANALYTICS_BEACON}/`,
+];
 
 /** Workers Static Assets rejects longer lines in _headers. */
 export const MAX_HEADERS_LINE_LENGTH = 2000;
@@ -127,7 +133,7 @@ const sources = (hashes) =>
 export function buildCsp({ scripts, styles }) {
   return [
     "default-src 'self'",
-    `script-src ${sources(scripts)} ${WEB_ANALYTICS_ORIGIN}`,
+    `script-src ${sources(scripts)} ${WEB_ANALYTICS_SOURCES.join(" ")}`,
     `style-src ${sources(styles)}`,
     "img-src 'self'",
     "font-src 'self'",
