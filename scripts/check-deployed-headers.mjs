@@ -16,6 +16,8 @@ const HEADERS_FILE = "dist/client/_headers";
 const RETRY_INTERVAL_MS = 5_000;
 /** One minute in all; longer means the deploy itself is wrong. */
 const MAX_ATTEMPTS = 12;
+/** A response that takes longer counts as a failed attempt. */
+const REQUEST_TIMEOUT_MS = 10_000;
 
 /** Headers every page must carry (Issue #2). */
 export const REQUIRED_HEADERS = [
@@ -65,10 +67,23 @@ export function headerProblems(actual, expected, { noindex }) {
     if (served === null) problems.push(`missing ${name}`);
     else if (served !== value) problems.push(`${name} differs: ${served}`);
   }
-  const indexed = !/\bnoindex\b/.test(actual.get("x-robots-tag") ?? "");
+  // Robots rules are case-insensitive, and "none" means noindex, nofollow.
+  const indexed = !/\b(?:noindex|none)\b/i.test(
+    actual.get("x-robots-tag") ?? "",
+  );
   if (noindex && indexed) problems.push("missing X-Robots-Tag: noindex");
   if (!noindex && !indexed) problems.push("unexpected X-Robots-Tag: noindex");
   return problems;
+}
+
+/**
+ * An error with its cause; Node's fetch puts the reason (DNS, TLS) there.
+ * @param {unknown} error
+ */
+function describe(error) {
+  return error instanceof Error && error.cause
+    ? `${error}: ${error.cause}`
+    : String(error);
 }
 
 /**
@@ -80,7 +95,7 @@ export function headerProblems(actual, expected, { noindex }) {
  *   noindex: boolean,
  *   attempts?: number,
  *   intervalMs?: number,
- *   fetch?: (url: string) => Promise<Response>,
+ *   fetch?: (url: string, init?: RequestInit) => Promise<Response>,
  *   log?: (message: string) => void,
  * }} options
  * @returns {Promise<{ attempts: number, problems: string[] }>}
@@ -96,16 +111,26 @@ export async function checkUntilServed(
     log = console.log,
   },
 ) {
+  if (!Number.isSafeInteger(attempts) || attempts < 1) {
+    throw new Error(`attempts must be a positive integer, got ${attempts}`);
+  }
   /** @type {string[]} */
   let problems = [];
   for (let attempt = 1; attempt <= attempts; attempt++) {
-    problems = await fetch(url).then(
-      (response) =>
-        response.ok
+    problems = await fetch(url, {
+      // The URL itself must answer; a redirect is a problem, not followed.
+      redirect: "manual",
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+    }).then(
+      async (response) => {
+        // Only the headers are checked; release the connection.
+        await response.body?.cancel();
+        return response.ok
           ? headerProblems(response.headers, expected, { noindex })
-          : [`${url} returned ${response.status}`],
+          : [`${url} returned ${response.status}`];
+      },
       // A host that is not reachable yet is retried like a stale one.
-      (/** @type {unknown} */ error) => [`${url} failed: ${String(error)}`],
+      (/** @type {unknown} */ error) => [`${url} failed: ${describe(error)}`],
     );
     if (problems.length === 0) return { attempts: attempt, problems };
     if (attempt < attempts) {
