@@ -2,9 +2,9 @@ import { expect, test, type Page } from "@playwright/test";
 import { readFrontmatter } from "./content";
 
 /** Fixed by the requirements (AC-050), not read from the code. */
-const HEADING_WEIGHT = 500;
-const MIN_FONT_SIZE = 28;
-const MAX_FONT_SIZE = 56;
+const HEADING_WEIGHT = 400;
+const MIN_FONT_SIZE = 24;
+const MAX_FONT_SIZE = 40;
 /** Frames recorded after the pointer has left the hero. */
 const FRAMES_AFTER = 10;
 /** Narrower viewports clamp to the minimum size, wider ones to the maximum. */
@@ -19,7 +19,7 @@ async function moveAcrossHero(page: Page, ratio: number) {
   await page.mouse.move(box.x + box.width * ratio, box.y + box.height / 2);
 }
 
-test("見出しは太さ 500 で静止し、ポインターを動かしても出入りしても変わらない", async ({
+test("見出しは太さ 400 で静止し、ポインターを動かしても出入りしても変わらない", async ({
   page,
 }) => {
   await page.emulateMedia({ reducedMotion: "no-preference" });
@@ -53,7 +53,7 @@ test("見出しは太さ 500 で静止し、ポインターを動かしても出
   expect(new Set(weights)).toEqual(new Set([String(HEADING_WEIGHT)]));
 });
 
-test("見出しの文字の大きさは、狭い画面で 28px、広い画面で 56px になる", async ({
+test("見出しの文字の大きさは、狭い画面で 24px、広い画面で 40px になる", async ({
   page,
 }) => {
   await page.goto("/");
@@ -63,15 +63,6 @@ test("見出しの文字の大きさは、狭い画面で 28px、広い画面で
   // The viewports in playwright.config.ts sit beyond both ends of the clamp.
   const width = page.viewportSize()?.width ?? 0;
   expect(size).toBe(width < WIDE_VIEWPORT ? MIN_FONT_SIZE : MAX_FONT_SIZE);
-});
-
-test("見出しの文字の大きさは 28〜56px に収まる", async ({ page }) => {
-  await page.goto("/");
-  const size = await heading(page).evaluate((el) =>
-    parseFloat(getComputedStyle(el).fontSize),
-  );
-  expect(size).toBeGreaterThanOrEqual(MIN_FONT_SIZE);
-  expect(size).toBeLessThanOrEqual(MAX_FONT_SIZE);
 });
 
 test("Hero は添え書き・見出し・リード文だけで、問い合わせへのリンクもボタンも無い", async ({

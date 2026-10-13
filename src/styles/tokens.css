@@ -40,7 +40,7 @@
   --text-md: 1rem; /* 16px */
   --text-lg: 1.25rem; /* 20px */
   --text-xl: clamp(1.625rem, 3.2vw, 2.25rem); /* h2: 26-36px */
-  --text-hero: clamp(1.75rem, 4.2vw, 3.5rem); /* hero: 28-56px */
+  --text-hero: clamp(1.5rem, 2.8vw, 2.5rem); /* hero: 24-40px */
   --leading-body: 1.9;
   --leading-heading: 1.4;
   --tracking-body: 0.02em;
