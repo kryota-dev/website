@@ -151,12 +151,13 @@ jobs:
         name: Create or update the Preview
         if: steps.state.outputs.open == 'true'
         # Previews live on their own Worker, apart from production. Keep its
-        # name in sync with preview-cleanup.yml.
+        # name in sync with preview-cleanup.yml; the URL is only taken when
+        # Wrangler reports that Worker.
         # Read the URL from Wrangler's machine-readable output file rather than
         # stdout, which also carries the upload logs.
         run: |
           pnpm exec wrangler preview --worker-name "$PREVIEW_WORKER" --name "pr-${PR_NUMBER}"
-          preview_url="$(jq -ser 'map(select(.type == "preview")) | last | .preview_urls[0]' "$WRANGLER_OUTPUT_FILE_PATH")"
+          preview_url="$(jq -ser --arg worker "$PREVIEW_WORKER" 'map(select(.type == "preview")) | last | select(.worker_name == $worker) | .preview_urls[0]' "$WRANGLER_OUTPUT_FILE_PATH")"
           [[ "$preview_url" =~ ^https://[A-Za-z0-9.-]+\.workers\.dev/?$ ]] || {
             echo "Unexpected Preview URL: $preview_url" >&2
             exit 1
