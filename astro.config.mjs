@@ -1,9 +1,11 @@
 // @ts-check
 import { existsSync } from "node:fs";
 import cloudflare from "@astrojs/cloudflare";
+import { satteri } from "@astrojs/markdown-satteri";
 import sitemap from "@astrojs/sitemap";
 import { defineConfig, fontProviders } from "astro/config";
 import { FONT_PASS, NOTO_SOURCE, NOTO_SUBSET } from "./scripts/font-paths.mjs";
+import { externalLinksPlugin } from "./src/lib/external-link.ts";
 
 /**
  * The final build serves the subset made by scripts/subset-fonts.mjs; the
@@ -54,6 +56,9 @@ export default defineConfig({
   session: false,
   adapter: cloudflare({ imageService: "compile" }),
   integrations: [requireTwoPassBuild, sitemap()],
+  markdown: {
+    processor: satteri({ hastPlugins: [externalLinksPlugin] }),
+  },
   fonts: [
     {
       provider: fontProviders.local(),
