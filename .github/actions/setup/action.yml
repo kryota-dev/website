@@ -1,0 +1,34 @@
+name: Set up pnpm and Node.js
+description: Install pnpm and Node.js (.node-version) and the dependencies from the lockfile.
+
+inputs:
+  install-scripts:
+    # Jobs that hold deployment credentials leave this off, so no install
+    # script ever runs next to a token.
+    description: '"true" runs the install scripts of dependencies; "false" passes --ignore-scripts.'
+    required: false
+    default: "false"
+
+runs:
+  using: composite
+  steps:
+    - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6
+
+    - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+      with:
+        node-version-file: .node-version
+        cache: pnpm
+
+    - name: Install dependencies
+      shell: bash
+      run: |
+        case "$INSTALL_SCRIPTS" in
+          true) pnpm install --frozen-lockfile ;;
+          false) pnpm install --frozen-lockfile --ignore-scripts ;;
+          *)
+            echo "install-scripts must be \"true\" or \"false\": $INSTALL_SCRIPTS" >&2
+            exit 1
+            ;;
+        esac
+      env:
+        INSTALL_SCRIPTS: ${{ inputs.install-scripts }}
