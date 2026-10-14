@@ -9,7 +9,7 @@
 | `kryota-dev-website`         | 本番              | `https://kryota.dev` のみ      | `wrangler deploy`  |
 | `kryota-dev-website-preview` | PR ごとの Preview | `*.workers.dev` の Preview URL | `wrangler preview` |
 
-本番の Worker は `wrangler.jsonc` の `routes` でカスタムドメインに割り当て、`workers_dev` と `preview_urls` を無効にしています。本番のコードは kryota.dev 以外からは見えません。
+本番の Worker は `wrangler.jsonc` の `routes` でカスタムドメインに割り当て、`workers_dev` と `preview_urls` を無効にしています。本番の Worker には kryota.dev からしか到達できません。
 
 どちらの Worker も、配信するのは `pnpm build` の出力（`dist/`）です。Worker のエントリは `@astrojs/cloudflare` のもので、ページはすべて静的なアセットとして返します。
 
@@ -23,9 +23,9 @@
 
 デプロイのジョブはビルドし直さず、検査を通った成果物をそのまま配信します。依存も `--ignore-scripts` で入れ、トークンのある環境では install スクリプトを動かしません。
 
-デプロイの後には `scripts/check-deployed-headers.mjs` が、配信された URL のレスポンスヘッダーが `dist/client/_headers` の `/*` のルール（CSP を含む）と一致するかを確かめます。デプロイ直後は古い版が応答することがあるため、最大 1 分間リトライします。workers.dev のホストには `X-Robots-Tag: noindex` があること、kryota.dev には無いことも検査します。
+デプロイの後には `scripts/check-deployed-headers.mjs` が、配信された URL のレスポンスヘッダーが `dist/client/_headers` の `/*` のルール（CSP を含む）と一致するかを確かめます。デプロイ直後は古い版が応答することがあるため、5 秒間隔で最大 12 回試します（各リクエストのタイムアウトは 10 秒）。workers.dev のホストには `X-Robots-Tag: noindex` があること、kryota.dev には無いことも検査します。
 
-PR が閉じられると、`.github/workflows/preview-cleanup.yml` が `wrangler preview delete` でその Preview を消します。Preview の作成と削除は PR 番号ごとの `concurrency` で直列化しており、閉じた後に Preview が作られることはありません。フォークからの PR には Cloudflare の資格情報を渡さないので、Preview は作られません。
+PR が閉じられると、`.github/workflows/preview-cleanup.yml` が `wrangler preview delete` でその Preview を消します。`preview` ジョブは最初に PR が開いているかを確かめ、閉じていれば作成を省きます。確かめた後、作成までの間に閉じられた場合は Preview が作られますが、作成と削除は PR 番号ごとの `concurrency` で直列化しているので、削除がその後に走って消します。フォークからの PR には Cloudflare の資格情報を渡さないので、Preview は作られません。
 
 ## GitHub の設定
 
@@ -49,7 +49,7 @@ PR が閉じられると、`.github/workflows/preview-cleanup.yml` が `wrangler
 
 リポジトリの外にある設定です。
 
-- kryota.dev のゾーンと、本番 Worker へのカスタムドメインの割り当て（`wrangler deploy` が `routes` から作る）
+- kryota.dev のゾーン（本番 Worker へのカスタムドメインの割り当ては、`wrangler deploy` が `routes` から作る）
 - www から apex へのリダイレクト
 - Web Analytics（自動の挿入）。挿入される beacon のスクリプトは `scripts/csp.mjs` で CSP に許可してある
 
@@ -63,10 +63,12 @@ Worker の名前を変えるときは、`ci.yml` と `preview-cleanup.yml` の `
 
 `public/_headers` に全ページ共通のヘッダー（HSTS、`X-Content-Type-Options`、`Referrer-Policy`、`Permissions-Policy`、`Cross-Origin-Opener-Policy`）を書いています。Content-Security-Policy は、ビルドの最後に `scripts/csp.mjs` が出力 HTML のインライン script と style のハッシュを集めて追記します。外部のスクリプトやスタイルを足すときは、`scripts/csp.mjs` の許可リストも直してください。
 
+同じファイルの別のルールで、workers.dev のホスト（Preview）にだけ `X-Robots-Tag: noindex` を付け、検索結果に出ないようにしています。
+
 Workers Static Assets は `_headers` の 1 行が 2000 文字を超えると受け付けないため、`scripts/csp.mjs` がビルド時にこの長さを検査します。
 
 ## 依存の更新
 
-Renovate（`renovate.json`）が、毎週月曜の朝（日本時間）に依存と GitHub Actions の更新 PR を作ります。lockfile の更新は毎月 1 日です。公開から 3 日経っていない版は使いません（`renovate.json` と `pnpm-workspace.yaml` の両方で設定。`pnpm-workspace.yaml` の値を `renovate.json` より長くしない）。GitHub Actions はコミットハッシュで固定します。
+Renovate（`renovate.json`）が、依存と GitHub Actions の更新 PR を作ります。PR を作ってよい時間帯は月曜の 0〜9 時（日本時間）で、lockfile の作り直し（`lockFileMaintenance`）は毎月 1 日の同じ時間帯です。実際に動く時刻は Renovate 側の実行のタイミングにもよります。公開から 3 日経っていない版は使いません（`renovate.json` と `pnpm-workspace.yaml` の両方で設定。`pnpm-workspace.yaml` の値を `renovate.json` より長くしない）。GitHub Actions はコミットハッシュで固定します。
 
 CI の lychee も、版と sha256 を `ci.yml` に固定しています。上げるときは両方を書き換えます。
