@@ -23,6 +23,7 @@ jobs:
       - uses: ./.github/actions/setup
         with:
           install-scripts: "true"
+          cache: "true"
 
       # The installs below run in the background while the checks and the
       # build run; their PATH changes take effect only after a wait step.
