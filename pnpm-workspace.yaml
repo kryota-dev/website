@@ -1,13 +1,14 @@
-# Install only versions published at least 3 days ago, the window in which
-# npm still allows a release to be unpublished. Keep it no longer than
+# When resolving dependencies, skip versions published less than 3 days ago,
+# so a malicious or broken release has time to be found and pulled. It does
+# not check versions already in the lockfile. Keep it no longer than
 # minimumReleaseAge in renovate.json, so Renovate's updates can be locked.
 minimumReleaseAge: 4320
 
-# Fail the install when a new dependency brings a build script that is
-# neither allowed nor ignored here.
+# Fail the install when a dependency brings a build script that is not
+# listed here.
 strictDepBuilds: true
-# Their prebuilt binaries come as optional dependencies, so the build works
-# without running these scripts.
-ignoredBuiltDependencies:
-  - esbuild
-  - workerd
+allowBuilds:
+  # Their prebuilt binaries come as optional dependencies, so the build works
+  # without running these scripts.
+  esbuild: false
+  workerd: false
