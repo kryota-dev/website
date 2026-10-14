@@ -18,7 +18,20 @@ export const AVATAR_SOURCE_SIZE = 400;
  * @returns {Buffer}
  */
 export function renderIcon(avatar, { size, shape, crop }) {
+  // A PNG starts with the IHDR chunk: width and height at bytes 16 and 20.
+  const width = avatar.readUInt32BE(16);
+  const height = avatar.readUInt32BE(20);
+  if (width !== AVATAR_SOURCE_SIZE || height !== AVATAR_SOURCE_SIZE) {
+    throw new Error(
+      `${AVATAR_SOURCE} must be ${AVATAR_SOURCE_SIZE}×${AVATAR_SOURCE_SIZE}, got ${width}×${height}`,
+    );
+  }
   const { x, y, size: side } = crop;
+  if (![x, y, side, size].every(Number.isFinite) || side <= 0 || size <= 0) {
+    throw new Error(
+      `Icon size or crop is invalid: ${JSON.stringify({ size, crop })}`,
+    );
+  }
   if (
     x < 0 ||
     y < 0 ||

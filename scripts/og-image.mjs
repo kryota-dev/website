@@ -44,13 +44,13 @@ const FOOTER_RULE = 2;
 const FOOTER_GAP = 32;
 
 /** The name shrinks through these sizes until it fits on one line; otherwise the build fails. */
-const NAME_SIZES = [96, 88, 80, 72, 64, 56, 48];
+export const NAME_SIZES = [96, 88, 80, 72, 64, 56, 48];
 const NAME_LINE_HEIGHT = 1.2;
-/** Width estimate per character in em: full-width (CJK) vs. other. */
-const FULL_WIDTH_EM = 1;
-const NARROW_EM = 0.6;
-/** Safety margin for the width estimate. */
-const WRAP_MARGIN = 1.05;
+/** Room for satori's rounding and kerning against the measured width. */
+const FIT_MARGIN = 1.02;
+/** Text widths available to the name and the role, and to the site name. */
+export const OG_TEXT_WIDTH = TEXT_WIDTH;
+export const OG_CONTENT_WIDTH = CONTENT_WIDTH;
 
 /**
  * @typedef {object} OgText
@@ -59,36 +59,27 @@ const WRAP_MARGIN = 1.05;
  * @property {string} role The line under the name (see scripts/person.mjs)
  */
 
-/** @param {string} char */
-const isFullWidth = (char) => (char.codePointAt(0) ?? 0) > 0x2e7f;
-
-/** @param {string} text @param {number} size */
-function estimateWidth(text, size) {
-  let em = 0;
-  for (const char of text) em += isFullWidth(char) ? FULL_WIDTH_EM : NARROW_EM;
-  return em * size * WRAP_MARGIN;
-}
-
 /**
- * Picks the largest name size that fits on one line beside the avatar.
- * Throws when even the smallest size does not fit.
- * @param {string} name
+ * Measures text with the font's own advances at the given weight.
+ * @param {import("fontkit").Font} font
+ * @param {string} text
+ * @param {number} size
+ * @param {number} weight
  */
-function nameSize(name) {
-  const size = NAME_SIZES.find((s) => estimateWidth(name, s) <= TEXT_WIDTH);
-  if (size === undefined) {
-    throw new Error(
-      `site.seo.person "name" is too long for the OGP image (${[...name].length} characters)`,
-    );
-  }
-  return size;
+function measure(font, text, size, weight) {
+  const face = font.getVariation({ wght: weight });
+  return (face.layout(text).advanceWidth / face.unitsPerEm) * size * FIT_MARGIN;
 }
 
 /**
- * @param {Buffer} source
+ * Checks the text against the font and the layout, and picks the largest
+ * name size that fits on one line beside the avatar. Throws when a glyph is
+ * missing or any line does not fit.
  * @param {OgText} text
+ * @param {Buffer} source
+ * @returns {{ nameSize: number }}
  */
-function assertRenderable(source, text) {
+export function layoutText(text, source) {
   const font = create(source);
   if (!("hasGlyphForCodePoint" in font))
     throw new Error(`${NOTO_SOURCE} is a collection`);
@@ -104,12 +95,21 @@ function assertRenderable(source, text) {
       );
     }
   }
-  if (estimateWidth(text.role, ROLE_TEXT) > TEXT_WIDTH) {
+  if (measure(font, text.role, ROLE_TEXT, 400) > TEXT_WIDTH) {
     throw new Error(`OGP "role" does not fit beside the avatar: ${text.role}`);
   }
-  if (estimateWidth(text.site, SMALL_TEXT) > CONTENT_WIDTH) {
+  if (measure(font, text.site, SMALL_TEXT, 700) > CONTENT_WIDTH) {
     throw new Error(`OGP "site" does not fit on one line: ${text.site}`);
   }
+  const nameSize = NAME_SIZES.find(
+    (size) => measure(font, text.name, size, 400) <= TEXT_WIDTH,
+  );
+  if (nameSize === undefined) {
+    throw new Error(
+      `site.seo.person "name" is too long for the OGP image (${[...text.name].length} characters)`,
+    );
+  }
+  return { nameSize };
 }
 
 /**
@@ -132,8 +132,7 @@ const el = (type, style, children, props = {}) => ({
  * @returns {Promise<Buffer>}
  */
 export async function renderOgImage(text, source, avatar) {
-  assertRenderable(source, text);
-  const size = nameSize(text.name);
+  const { nameSize: size } = layoutText(text, source);
   // satori cannot read variable fonts: pin wght per weight and keep only these characters.
   const chars = Object.values(text).join("");
   const fonts = await Promise.all(
@@ -260,6 +259,18 @@ function nonEmptyString(value, where) {
 }
 
 /**
+ * @param {unknown} value
+ * @param {string} where
+ * @returns {Record<string, unknown>}
+ */
+function asRecord(value, where) {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    throw new Error(`${where}: expected a mapping`);
+  }
+  return /** @type {Record<string, unknown>} */ (value);
+}
+
+/**
  * Reads the OGP text from site/index.md.
  * @returns {Promise<OgText>}
  */
@@ -268,20 +279,22 @@ async function readText() {
   const source = await readFile(`src/content/${file}`, "utf8");
   const match = source.match(FRONTMATTER);
   if (!match) throw new Error(`${file} has no frontmatter`);
-  /** @type {any} */
-  const data = parse(match[1]);
-  const person = data?.seo?.person;
+  const data = asRecord(parse(match[1]), file);
+  const person = asRecord(
+    asRecord(data.seo, `${file} seo`).person,
+    `${file} seo.person`,
+  );
   const alternateName = nonEmptyString(
-    person?.alternateName,
+    person.alternateName,
     `${file} seo.person.alternateName`,
   );
   const jobTitle = nonEmptyString(
-    person?.jobTitle,
+    person.jobTitle,
     `${file} seo.person.jobTitle`,
   );
   return {
-    site: nonEmptyString(data?.name, `${file} name`),
-    name: nonEmptyString(person?.name, `${file} seo.person.name`),
+    site: nonEmptyString(data.name, `${file} name`),
+    name: nonEmptyString(person.name, `${file} seo.person.name`),
     role: personRole({ alternateName, jobTitle }),
   };
 }

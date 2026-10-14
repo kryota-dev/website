@@ -1,6 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
 import { AVATAR_BG } from "../scripts/icon-settings.mjs";
-import { personRole } from "../scripts/person.mjs";
 import { readBody, readFrontmatter, site } from "./content";
 
 /** Fixed by the requirements (AC-050: the name, 24–40px, weight 400), not read from the code. */
@@ -11,6 +10,8 @@ const MAX_FONT_SIZE = 40;
 const FRAMES_AFTER = 10;
 /** Narrower viewports clamp to the minimum size, wider ones to the maximum. */
 const WIDE_VIEWPORT = 1024;
+/** The avatar moves beside the heading from 48rem (768px) up. */
+const SIDE_BY_SIDE_VIEWPORT = 768;
 
 const heading = (page: Page) => page.locator("#hero-heading");
 
@@ -77,7 +78,9 @@ test("Hero は名前・肩書き・標語・リード文とアバターだけで
   await expect(hero.getByRole("button")).toHaveCount(0);
   await expect(hero.locator('a[href*="#contact"]')).toHaveCount(0);
   await expect(heading(page)).toHaveText(person.name);
-  await expect(hero.locator(".role")).toHaveText(personRole(person));
+  await expect(hero.locator(".role")).toHaveText(
+    `${person.alternateName} / ${person.jobTitle}`,
+  );
   await expect(hero.locator(".tagline")).toHaveText(tagline);
   await expect(hero.locator(".lead")).toHaveText(readBody("hero/index.md"));
   await expect(hero.locator("img")).toHaveCount(1);
@@ -113,17 +116,24 @@ test("アバターの円は、テーマに関わらず同じ明るい色", async
   await expect(avatar).toHaveCSS("border-radius", "50%");
 });
 
-test("アバターは広い画面で見出しの右に、狭い画面で見出しの上に置く", async ({
+test("アバターは 768px 以上で見出しの右に、それより狭い画面で見出しの上に置く", async ({
   page,
 }) => {
-  await page.goto("/");
-  const avatar = await page.locator("[data-hero] .avatar").boundingBox();
-  const h1 = await heading(page).boundingBox();
-  if (!avatar || !h1) throw new Error("Hero is not rendered");
-  const width = page.viewportSize()?.width ?? 0;
-  if (width < WIDE_VIEWPORT) {
-    expect(avatar.y + avatar.height).toBeLessThanOrEqual(h1.y);
-  } else {
-    expect(avatar.x).toBeGreaterThanOrEqual(h1.x + h1.width);
+  const height = page.viewportSize()?.height ?? 900;
+  for (const width of [
+    SIDE_BY_SIDE_VIEWPORT - 1,
+    SIDE_BY_SIDE_VIEWPORT,
+    page.viewportSize()?.width ?? 0,
+  ]) {
+    await page.setViewportSize({ width, height });
+    await page.goto("/");
+    const avatar = await page.locator("[data-hero] .avatar").boundingBox();
+    const h1 = await heading(page).boundingBox();
+    if (!avatar || !h1) throw new Error("Hero is not rendered");
+    if (width < SIDE_BY_SIDE_VIEWPORT) {
+      expect(avatar.y + avatar.height, String(width)).toBeLessThanOrEqual(h1.y);
+    } else {
+      expect(avatar.x, String(width)).toBeGreaterThanOrEqual(h1.x + h1.width);
+    }
   }
 });

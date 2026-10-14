@@ -10,13 +10,13 @@
 
 テストは Markdown を直接読んで期待値を作るので、文言を差し替えるだけならテストを直す必要はありません。ただし、テストは次の形を前提にしています。形を変えるときは、関係するテストも確かめてください。
 
-| 前提                                                                                                    | テスト               |
-| ------------------------------------------------------------------------------------------------------- | -------------------- |
-| profile の本文（職務要約）は 2 段落以上                                                                 | `tests/home.spec.ts` |
-| works と profile の本文は、表示されるテキストと Markdown が一致する（強調や HTML を入れると一致しない） | `tests/home.spec.ts` |
-| contact の本文には Markdown 形式（`[label](href)`）のリンクが 1 つ以上ある                              | `tests/home.spec.ts` |
-| site の `seo.ogImageAlt` が、`name`・`seo.person.name`・「`alternateName` / `jobTitle`」を含む          | `tests/seo.spec.ts`  |
-| ページ上のセクションの並び（後述）                                                                      | `tests/home.spec.ts` |
+| 前提                                                                                                        | テスト               |
+| ----------------------------------------------------------------------------------------------------------- | -------------------- |
+| profile の本文（職務要約）は 2 段落以上                                                                     | `tests/home.spec.ts` |
+| hero・works・profile の本文は、表示されるテキストと Markdown が一致する（強調や HTML を入れると一致しない） | `tests/home.spec.ts` |
+| contact の本文には Markdown 形式（`[label](href)`）のリンクが 1 つ以上ある                                  | `tests/home.spec.ts` |
+| site の `seo.ogImageAlt` が、`name`・`seo.person.name`・「`alternateName` / `jobTitle`」を含む              | `tests/seo.spec.ts`  |
+| ページ上のセクションの並び（後述）                                                                          | `tests/home.spec.ts` |
 
 ## ファイルの一覧
 
@@ -53,7 +53,7 @@
 
 OGP 画像は、site の `seo.person`（名前と「`alternateName` / `jobTitle`」）・`name`（サイト名）と、アバターから生成します。標語は描きません。名前が 1 行に収まらないとき、肩書きの行がアバターの横に収まらないとき、Noto Sans JP に無い文字があるときは、ビルドが失敗します。
 
-アバターの元画像は `src/assets/avatar.png`（400×400、背景は透明）の 1 枚だけです。トップの画像・OGP 画像・favicon・apple-touch-icon は、ビルドがこれから作ります。差し替えるときは同じ大きさの PNG で置き換え、favicon の切り出し位置（`scripts/icon-settings.mjs` の `ICONS.favicon.crop`）が頭のあたりに合っているかを確かめてください。円の色は `--color-avatar-bg`（`src/styles/tokens.css`）で、テーマに関わらず同じです。
+アバターの元画像は `src/assets/avatar.png`（400×400、背景は透明）の 1 枚だけです。トップの画像・OGP 画像・favicon・apple-touch-icon は、ビルドがこれから作ります。差し替えるときは同じ大きさの PNG で置き換え、favicon の切り出し位置（`scripts/icon-settings.mjs` の `ICONS.favicon.crop`）が頭のあたりに合っているかを確かめてください。円の色は `--color-avatar-bg`（`src/styles/tokens.css`）で、テーマに関わらず同じです。変えるときは、OGP 画像とアイコンが使う `scripts/icon-settings.mjs` の `AVATAR_BG` も同じ値にします。
 
 ## sections
 
