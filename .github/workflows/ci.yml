@@ -229,7 +229,7 @@ jobs:
         with:
           name: site
 
-      # Serves kryota.dev (routes in wrangler.jsonc) and workers.dev.
+      # Serves kryota.dev only (routes in wrangler.jsonc).
       - name: Deploy
         run: pnpm exec wrangler deploy
         env:
