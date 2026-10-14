@@ -34,7 +34,7 @@
 - Wrangler には、リポジトリの `wrangler.deploy.json` を `--config` で渡す。`--config` を明示すると、Wrangler はビルドが書いた redirect を使わない
 - `dist/client/.assetsignore`（生成された `wrangler.json` などを公開しないための一覧）は成果物のものを使う。このファイルにはアップロードから外すファイルしか書けない
 
-`wrangler.deploy.json` は、`wrangler.jsonc` からアダプタのエントリ（`main`）を除き、`assets.directory` を `./dist/client` にした設定です。JSON なのでコメントを書けず、説明はここに置きます。`wrangler.jsonc` を変えたら `wrangler.deploy.json` も合わせます。ずれは `tests/deploy-config.spec.ts` が検出します。このテストは、ビルドが生成する設定に `main` が現れたとき（静的でないページを足したときなど）にも失敗します。そのときは、この配信の方式を見直します。
+`wrangler.deploy.json` は、`wrangler.jsonc` からアダプタのエントリ（`main`）を除き、`assets.directory` を `./dist/client` にした設定です。アダプタが生成する設定にだけある `previews`（空のブロック。`wrangler preview` が要求する）も持ちます。JSON なのでコメントを書けず、説明はここに置きます。`wrangler.jsonc` を変えたら `wrangler.deploy.json` も合わせます。`tests/deploy-config.spec.ts` が、`wrangler.jsonc` の値が欠けていないことと、持っている値が生成された設定と同じことを確かめます。生成された設定にだけあるキーが新たに必要になった場合（`previews` のように）は、このテストでは分からず、`preview` ジョブの失敗で分かります。このテストは、ビルドが生成する設定に `main` が現れたとき（静的でないページを足したときなど）にも失敗します。そのときは、この配信の方式を見直します。
 
 成果物の中身（ページや `_headers`）の改ざんは、この方式でも防げません。配信後のヘッダーの検査も、期待値を成果物の `_headers` から読んでいます。
 

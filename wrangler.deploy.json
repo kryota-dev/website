@@ -3,7 +3,12 @@
   "compatibility_date": "2026-10-06",
   "compatibility_flags": ["global_fetch_strictly_public"],
   "name": "kryota-dev-website",
-  "routes": [{ "pattern": "kryota.dev", "custom_domain": true }],
+  "routes": [
+    {
+      "pattern": "kryota.dev",
+      "custom_domain": true
+    }
+  ],
   "workers_dev": false,
   "preview_urls": false,
   "assets": {
@@ -11,5 +16,6 @@
   },
   "observability": {
     "enabled": true
-  }
+  },
+  "previews": {}
 }

@@ -32,10 +32,24 @@ const without = (config: Record<string, unknown>, keys: string[]) =>
   );
 
 test.describe("配信用の Wrangler の設定", () => {
-  test("wrangler.jsonc と、main と assets 以外が同じ", () => {
-    expect(without(readJson(DEPLOY_CONFIG), DEPLOY_ONLY)).toEqual(
+  test("wrangler.jsonc の設定を、main と assets のほかはすべて持つ", () => {
+    const deploy = readJson(DEPLOY_CONFIG);
+    for (const [key, value] of Object.entries(
       without(readJsonc(USER_CONFIG), DEPLOY_ONLY),
-    );
+    )) {
+      expect(deploy[key], key).toEqual(value);
+    }
+  });
+
+  // The adapter adds settings of its own, such as the previews block that
+  // `wrangler preview` requires.
+  test("ビルドが生成する設定と、assets のほかは同じ値を持つ", () => {
+    const generated = readJson(GENERATED_CONFIG);
+    for (const [key, value] of Object.entries(
+      without(readJson(DEPLOY_CONFIG), ["$schema", "assets"]),
+    )) {
+      expect(generated[key], key).toEqual(value);
+    }
   });
 
   test("ビルドしたアセットだけを配信し、Worker のコードを持たない", () => {
