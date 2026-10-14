@@ -2,7 +2,7 @@
 
 ソフトウェアエンジニア Ryota Kaneko のポートフォリオサイト（<https://kryota.dev>）のソースです。
 
-Astro で生成した静的サイトを、Cloudflare Workers の Static Assets で配信しています。表示する文言はすべて `src/content/` の Markdown にあります。
+Astro で生成した静的サイトを、Cloudflare Workers の Static Assets で配信しています。表示する文言は、原則として `src/content/` の Markdown にあります。
 
 ## 特徴
 
@@ -16,7 +16,7 @@ Astro で生成した静的サイトを、Cloudflare Workers の Static Assets �
 
 - Node.js（版は `.node-version`。24 系）
 - pnpm 10（版は `package.json` の `packageManager`。Corepack で有効にできる）
-- [lychee](https://lychee.cli.rs/installation/)（`pnpm test:links` を使うときだけ）
+- [lychee](https://lychee.cli.rs/guides/getting-started/)（`pnpm test:links` と `pnpm test:a11y` で使う）
 
 ## はじめかた
 
@@ -25,22 +25,22 @@ pnpm install
 pnpm dev
 ```
 
-公開から 3 日経っていない版の依存は入りません（`pnpm-workspace.yaml` の `minimumReleaseAge`）。
+依存を追加・更新するとき、公開から 3 日経っていない版は選ばれません（`pnpm-workspace.yaml` の `minimumReleaseAge`。lockfile にある版は検査しない）。
 
 ## コマンド
 
-| コマンド               | 内容                                                           |
-| ---------------------- | -------------------------------------------------------------- |
-| `pnpm dev`             | 開発サーバー                                                   |
-| `pnpm build`           | 本番ビルド（`dist/`）。`astro build` は直接使えない            |
-| `pnpm preview`         | ビルド結果のプレビュー                                         |
-| `pnpm lint`            | ESLint と Stylelint                                            |
-| `pnpm format`          | Prettier で整形（検査だけなら `pnpm format:check`）            |
-| `pnpm check`           | `astro check` による型検査                                     |
-| `pnpm test:html`       | html-validate（ビルド後）                                      |
-| `pnpm test:links`      | lychee で内部リンクとアンカーを検査（ビルド後）                |
-| `pnpm test:a11y`       | Playwright のテスト。ライト / ダーク × モバイル / デスクトップ |
-| `pnpm test:lighthouse` | Lighthouse CI                                                  |
+| コマンド               | 内容                                                                                |
+| ---------------------- | ----------------------------------------------------------------------------------- |
+| `pnpm dev`             | 開発サーバー                                                                        |
+| `pnpm build`           | 本番ビルド（`dist/`）。`astro build` は直接使えない                                 |
+| `pnpm preview`         | ビルド結果のプレビュー                                                              |
+| `pnpm lint`            | ESLint と Stylelint                                                                 |
+| `pnpm format`          | Prettier で整形（検査だけなら `pnpm format:check`）                                 |
+| `pnpm check`           | `astro check` による型検査                                                          |
+| `pnpm test:html`       | html-validate（ビルド後）                                                           |
+| `pnpm test:links`      | lychee で内部リンクとアンカーを検査（ビルド後）                                     |
+| `pnpm test:a11y`       | Playwright の全テスト（a11y 以外も含む）。ライト / ダーク × モバイル / デスクトップ |
+| `pnpm test:lighthouse` | Lighthouse CI                                                                       |
 
 テストはビルド済みの `dist/client` を対象にします。ソースを変えたら `pnpm build` してから実行してください。初回は `pnpm exec playwright install chromium` でブラウザを入れます。
 
