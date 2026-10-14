@@ -1,7 +1,8 @@
 // @ts-check
 // Two-pass build: collect the characters in use, subset the Japanese font,
 // then build again with the subset (scripts/subset-fonts.mjs). Finally,
-// generate the OGP image (scripts/og-image.mjs) and the Content-Security-Policy
+// generate the OGP image (scripts/og-image.mjs), the favicon and the
+// apple-touch-icon (scripts/icons.mjs), and the Content-Security-Policy
 // (scripts/csp.mjs).
 // Usage: pnpm build [astro build options]
 import { spawnSync } from "node:child_process";
@@ -55,4 +56,5 @@ runNode([astroCli, "build", ...forwarded], { FONT_PASS: "collect" });
 runNode(["scripts/subset-fonts.mjs"], {});
 runNode([astroCli, "build", ...forwarded], { FONT_PASS: "final" });
 runNode(["scripts/og-image.mjs"], {});
+runNode(["scripts/icons.mjs"], {});
 runNode(["scripts/csp.mjs"], {});

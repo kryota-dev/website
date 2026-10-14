@@ -1,5 +1,7 @@
 import { readFileSync } from "node:fs";
 import { expect, test } from "@playwright/test";
+import { ICONS } from "../scripts/icon-settings.mjs";
+import { renderIcon } from "../scripts/icons.mjs";
 import { renderOgImage } from "../scripts/og-image.mjs";
 import { personRole } from "../scripts/person.mjs";
 import { serializeJsonLd } from "../src/lib/json-ld";
@@ -243,5 +245,64 @@ test.describe("OGP 画像の生成", () => {
     await expect(
       renderOgImage({ ...base, role: "😀" }, source, avatar),
     ).rejects.toThrow(/missing from/);
+  });
+});
+
+test.describe("favicon と apple-touch-icon", () => {
+  test("head に link があり、指定した大きさの PNG が配信される", async ({
+    page,
+  }) => {
+    await page.goto("/");
+    const icon = page.locator('head link[rel="icon"]');
+    await expect(icon).toHaveCount(1);
+    await expect(icon).toHaveAttribute("href", ICONS.favicon.path);
+    await expect(icon).toHaveAttribute("type", "image/png");
+    const touch = page.locator('head link[rel="apple-touch-icon"]');
+    await expect(touch).toHaveCount(1);
+    await expect(touch).toHaveAttribute("href", ICONS.appleTouch.path);
+    for (const { path, size } of Object.values(ICONS)) {
+      const decoded = await page.evaluate(async (src) => {
+        const image = new Image();
+        image.src = src;
+        await image.decode();
+        return { width: image.naturalWidth, height: image.naturalHeight };
+      }, path);
+      expect(decoded).toEqual({ width: size, height: size });
+    }
+  });
+
+  test("favicon は円で角が透明、apple-touch-icon は角まで塗る", async ({
+    page,
+  }) => {
+    await page.goto("/");
+    const corners = await page.evaluate(
+      async (paths) => {
+        const alpha = async (src: string) => {
+          const image = new Image();
+          image.src = src;
+          await image.decode();
+          const canvas = document.createElement("canvas");
+          canvas.width = image.naturalWidth;
+          canvas.height = image.naturalHeight;
+          const context = canvas.getContext("2d")!;
+          context.drawImage(image, 0, 0);
+          return context.getImageData(0, 0, 1, 1).data[3];
+        };
+        return { favicon: await alpha(paths[0]), touch: await alpha(paths[1]) };
+      },
+      [ICONS.favicon.path, ICONS.appleTouch.path],
+    );
+    expect(corners).toEqual({ favicon: 0, touch: 255 });
+  });
+
+  test("切り出しが元画像の外にはみ出すと失敗する", () => {
+    const avatar = readFileSync("src/assets/avatar.png");
+    expect(() =>
+      renderIcon(avatar, {
+        size: 32,
+        shape: "circle",
+        crop: { x: 300, y: 0, size: 200 },
+      }),
+    ).toThrow(/outside the avatar/);
   });
 });
