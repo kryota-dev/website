@@ -28,23 +28,17 @@ jobs:
         with:
           install-scripts: "true"
 
-      - name: Lint (ESLint, Stylelint)
-        run: pnpm lint
-
-      - name: Format check (Prettier)
-        run: pnpm format:check
-
-      - name: Type check (astro check)
-        run: pnpm check
-
-      - name: Build
-        run: pnpm build
-
-      - name: HTML validation (html-validate)
-        run: pnpm test:html
+      # The installs below run in the background while the checks and the
+      # build run; their PATH changes take effect only after a wait step.
+      - id: playwright
+        name: Install Playwright browser
+        background: true
+        run: pnpm exec playwright install --with-deps chromium
 
       # Pinned by version and checksum. The tests below use it as well.
-      - name: Install lychee
+      - id: lychee
+        name: Install lychee
+        background: true
         run: |
           archive="lychee-x86_64-unknown-linux-gnu"
           curl --proto "=https" --tlsv1.2 -fsSLo "${RUNNER_TEMP}/lychee.tar.gz" \
@@ -58,15 +52,36 @@ jobs:
           LYCHEE_VERSION: 0.24.2
           LYCHEE_SHA256: 1f4e0ef7f6554a6ed33dd7ac144fb2e1bbed98598e7af973042fc5cd43951c9a
 
+      # The build stays out of this group: astro check writes .astro/ as well.
+      - parallel:
+          - name: Lint (ESLint, Stylelint)
+            run: pnpm lint
+
+          - name: Format check (Prettier)
+            run: pnpm format:check
+
+          - name: Type check (astro check)
+            run: pnpm check
+
+      - name: Build
+        run: pnpm build
+
+      - name: HTML validation (html-validate)
+        run: pnpm test:html
+
+      - name: Wait for lychee
+        wait: lychee
+
       - name: Link check (lychee, internal links only)
         run: pnpm test:links
 
-      - name: Install Playwright browser
-        run: pnpm exec playwright install --with-deps chromium
+      - name: Wait for the Playwright browser
+        wait: playwright
 
       - name: Accessibility (axe, light/dark x mobile/desktop)
         run: pnpm test:a11y
 
+      # Not alongside the tests: sharing the CPU skews the scores.
       - name: Lighthouse CI
         run: pnpm test:lighthouse
 
