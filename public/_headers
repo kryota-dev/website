@@ -8,7 +8,7 @@
   Permissions-Policy: camera=(), geolocation=(), microphone=(), payment=(), usb=()
   Cross-Origin-Opener-Policy: same-origin
 
-# Keep the workers.dev hosts (production and Previews) out of search results;
-# the custom domain is the canonical URL.
+# Keep the workers.dev hosts (the Previews) out of search results; the custom
+# domain is the canonical URL.
 https://:worker.:subdomain.workers.dev/*
   X-Robots-Tag: noindex
