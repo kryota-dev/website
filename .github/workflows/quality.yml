@@ -1,0 +1,106 @@
+name: Quality
+
+# The quality gates, called by pull-request.yml and main.yml. The deploy jobs
+# there take the `site` artifact uploaded here, within the same run.
+# No concurrency here: the callers set it, and sharing their group would
+# cancel the caller itself.
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  gates:
+    name: Lint, build, and quality gates
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - uses: ./.github/actions/setup
+        with:
+          install-scripts: "true"
+
+      # The installs below run in the background while the checks and the
+      # build run; their PATH changes take effect only after a wait step.
+      - id: playwright
+        name: Install Playwright browser
+        background: true
+        run: pnpm exec playwright install --with-deps chromium
+
+      # Pinned by version and checksum. The tests below use it as well.
+      - id: lychee
+        name: Install lychee
+        background: true
+        run: |
+          archive="lychee-x86_64-unknown-linux-gnu"
+          curl --proto "=https" --tlsv1.2 -fsSLo "${RUNNER_TEMP}/lychee.tar.gz" \
+            "https://github.com/lycheeverse/lychee/releases/download/lychee-v${LYCHEE_VERSION}/${archive}.tar.gz"
+          echo "${LYCHEE_SHA256}  ${RUNNER_TEMP}/lychee.tar.gz" | sha256sum --check --strict
+          tar -xzf "${RUNNER_TEMP}/lychee.tar.gz" -C "${RUNNER_TEMP}"
+          mkdir -p "${RUNNER_TEMP}/bin"
+          install -m 0755 "${RUNNER_TEMP}/${archive}/lychee" "${RUNNER_TEMP}/bin/lychee"
+          echo "${RUNNER_TEMP}/bin" >> "$GITHUB_PATH"
+        env:
+          LYCHEE_VERSION: 0.24.2
+          LYCHEE_SHA256: 1f4e0ef7f6554a6ed33dd7ac144fb2e1bbed98598e7af973042fc5cd43951c9a
+
+      # The build stays out of this group: astro check writes .astro/ as well.
+      - parallel:
+          - name: Lint (ESLint, Stylelint)
+            run: pnpm lint
+
+          - name: Format check (Prettier)
+            run: pnpm format:check
+
+          - name: Type check (astro check)
+            run: pnpm check
+
+      - name: Build
+        run: pnpm build
+
+      - name: HTML validation (html-validate)
+        run: pnpm test:html
+
+      - name: Wait for lychee
+        wait: lychee
+
+      - name: Link check (lychee, internal links only)
+        run: pnpm test:links
+
+      - name: Wait for the Playwright browser
+        wait: playwright
+
+      - name: Accessibility (axe, light/dark x mobile/desktop)
+        run: pnpm test:a11y
+
+      # Not alongside the tests: sharing the CPU skews the scores.
+      - name: Lighthouse CI
+        run: pnpm test:lighthouse
+
+      - name: Upload reports
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: quality-reports
+          path: |
+            playwright-report/
+            .lighthouseci/
+          include-hidden-files: true
+          if-no-files-found: ignore
+          retention-days: 14
+
+      # The callers' deploy jobs ship exactly what passed the gates above.
+      - name: Upload build for deployment
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: site
+          path: |
+            dist/
+            .wrangler/deploy/config.json
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 7

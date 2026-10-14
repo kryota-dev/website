@@ -22,7 +22,7 @@ pnpm test:lighthouse   # Lighthouse CI（Performance ≥ 0.95、他 3 項目 = 1
 
 - Playwright は `pnpm build` 済みの `dist/client` を検査する。ソースを変えたらビルドし直してから走らせる。
 - 単一テスト: `pnpm exec playwright test tests/seo.spec.ts`、名前で絞るなら `-g "<title>"`、プロジェクトを絞るなら `--project=mobile-light`（`{mobile,desktop}-{light,dark}` の 4 つ）。
-- CI（`.github/workflows/ci.yml`）は lint・format:check・check を並列に走らせた後、build → test:html → test:links → test:a11y → test:lighthouse の順に走る。Playwright のブラウザと lychee は、その裏で入れる。PR テンプレートのチェックリストも同じ項目。
+- CI の品質ゲート（`.github/workflows/quality.yml`。PR では `pull-request.yml`、main への push では `main.yml` が呼ぶ）は lint・format:check・check を並列に走らせた後、build → test:html → test:links → test:a11y → test:lighthouse の順に走る。Playwright のブラウザと lychee は、その裏で入れる。PR テンプレートのチェックリストも同じ項目。
 - ワークフローの依存の準備（pnpm・Node・install）は composite action `.github/actions/setup` にまとめてある。install スクリプトは既定で動かさず、品質ゲートのジョブだけが `install-scripts: "true"` で動かす。
 
 ## アーキテクチャ

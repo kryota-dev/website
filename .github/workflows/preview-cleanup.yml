@@ -18,7 +18,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     environment: preview
-    # Shared with the preview job in ci.yml; see there.
+    # Shared with the preview job in pull-request.yml; see there.
     concurrency:
       group: preview-${{ github.event.pull_request.number }}
       cancel-in-progress: false
@@ -30,7 +30,7 @@ jobs:
       # Only wrangler is needed here; install scripts stay off next to the token.
       - uses: ./.github/actions/setup
 
-      # The Worker that holds the Previews; see the preview job in ci.yml.
+      # The Worker that holds the Previews; see the preview job in pull-request.yml.
       - name: Delete the Preview
         run: pnpm exec wrangler preview delete --worker-name "$PREVIEW_WORKER" --name "pr-${PR_NUMBER}" --skip-confirmation
         env:

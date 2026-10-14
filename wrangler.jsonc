@@ -4,7 +4,7 @@
   "compatibility_flags": ["global_fetch_strictly_public"],
   "name": "kryota-dev-website",
   // Serve production only on kryota.dev. The Previews live on a separate
-  // Worker; see the preview job in ci.yml.
+  // Worker; see the preview job in pull-request.yml.
   "routes": [{ "pattern": "kryota.dev", "custom_domain": true }],
   // Wrangler also applies these two when it creates the Preview Worker. If
   // that Worker is ever recreated, enable its workers.dev and Preview URLs in
