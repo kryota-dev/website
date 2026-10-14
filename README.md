@@ -8,7 +8,7 @@ Astro で生成した静的サイトを、Cloudflare Workers の Static Assets �
 
 - 日本語フォント（Noto Sans JP）を、ページで使う文字だけに絞ってビルド時に作り直す
 - インラインの script と style をハッシュで許可する Content-Security-Policy を、ビルド時に生成する
-- OGP 画像を Markdown の内容から生成する
+- OGP 画像・favicon・apple-touch-icon を、Markdown の内容とアバターの画像 1 枚から生成する
 - ライト / ダーク / システムのテーマ切替
 - CI で HTML 検証・内部リンク検査・axe によるアクセシビリティ検査・Lighthouse の閾値（Performance 95 以上、他 3 項目 100）を必須にしている
 
@@ -52,4 +52,4 @@ pnpm dev
 
 ## ライセンス
 
-ソースコードは [MIT License](LICENSE) です。ただし、`src/content/` の文章・プロフィール・経歴と、そこから生成する OGP 画像は対象外で、転載・再利用はできません。`fonts/noto-sans-jp/` のフォントは SIL Open Font License 1.1 です。
+ソースコードは [MIT License](LICENSE) です。ただし、`src/content/` の文章・プロフィール・経歴、アバターの画像（`src/assets/avatar.png`）と、それらから生成する OGP 画像・favicon・apple-touch-icon は対象外で、転載・再利用はできません。`fonts/noto-sans-jp/` のフォントは SIL Open Font License 1.1 です。

@@ -33,8 +33,9 @@ pnpm test:lighthouse   # Lighthouse CI（Performance ≥ 0.95、他 3 項目 = 1
 1. `FONT_PASS=collect` で `astro build`（元の Noto Sans JP を使う）
 2. `scripts/subset-fonts.mjs`: 出力 HTML の文字を集め、Noto Sans JP をサブセット化して `.generated/fonts/` に置く（元フォントは sha256 を検証してから使う）
 3. `FONT_PASS=final` で再度 `astro build`（サブセットを使う）
-4. `scripts/og-image.mjs`: Markdown コンテンツから OGP 画像を satori + resvg で生成
-5. `scripts/csp.mjs`: 出力のインライン script/style の sha256 を集め、`dist/client/_headers` に Content-Security-Policy を追記（`'unsafe-inline'` は使わない）
+4. `scripts/og-image.mjs`: Markdown コンテンツとアバターから OGP 画像を satori + resvg で生成
+5. `scripts/icons.mjs`: アバターから favicon（32px、頭の切り出し）と apple-touch-icon（180px）を resvg で生成
+6. `scripts/csp.mjs`: 出力のインライン script/style の sha256 を集め、`dist/client/_headers` に Content-Security-Policy を追記（`'unsafe-inline'` は使わない）
 
 `astro.config.mjs` の `requireTwoPassBuild` が `FONT_PASS` 未設定の `astro build` を拒む。`--outDir` / `--root` は非対応。フォントのパスと `FONT_PASS` の判定は `scripts/font-paths.mjs` にまとまっており、設定とビルドスクリプトが共有する（テストはパスを直接書いているので、変えるときは `tests/` も直す）。
 
@@ -43,6 +44,8 @@ pnpm test:lighthouse   # Lighthouse CI（Performance ≥ 0.95、他 3 項目 = 1
 表示する文言は `src/content/` の Markdown（frontmatter + 本文）にあり、スキーマは `src/content.config.ts`（zod）。コンポーネントに文言を直書きしない。例外は外部リンクの読み上げ文 `NEW_TAB_NOTE`（`src/lib/external-link.ts`）で、コンテンツコレクションを読めない `astro.config.mjs` が使うためここにある。編集の詳細は `docs/content.md`。
 
 - `site` / `hero` / `profile` は `index.md` 1 件だけのコレクション。`src/lib/content.ts` の `getSingle` で読む。
+- 名前と肩書き（Hero の `<h1>`・OGP・JSON-LD）は `site.seo.person` が唯一の出どころ。「`alternateName` / `jobTitle`」の組み立ては `scripts/person.mjs`。
+- アバターの元画像は `src/assets/avatar.png` の 1 枚だけで、派生物（Hero の画像・OGP・アイコン）はすべてビルドで作る。設定は `scripts/icon-settings.mjs`。
 - `sections` / `works` / `skills` は `order` で並べる（`getOrdered`）。`sections` の `id` は重複禁止で、`getSection(id)` で引く。
 - `profile.links[].href` は `https:` と `mailto:` だけを許す。本文のリンクはスキーマで検査しない。
 - テストは `tests/content.ts` で frontmatter を直接読み、文言をハードコードしない。ただしページ上のセクションの並び（`tests/home.spec.ts` の `SECTION_ORDER`）や段落・行の数など、形には前提がある。
@@ -57,7 +60,7 @@ Markdown は Sätteri で処理し、`src/lib/markdown.ts` のプラグインで
 
 ### スタイル
 
-`@layer reset, tokens, base, components` の順序は `src/styles/global.css` と `layouts/Base.astro` のインライン style の 2 箇所で宣言しているので、変えるときは両方を直す。色・fill・stroke・border/outline の論理プロパティ・shadow・margin・padding・gap・inset は、Stylelint（`stylelint-declaration-strict-value`）で変数（`tokens.css` のトークン）を強制している（`0`・`auto` などは例外。対象と例外は `.stylelintrc.json`）。これらの生の値を書けるのは `tokens.css` と `reset.css` だけ。OGP 画像の色は `scripts/og-image.mjs` に複製しているので、ライトテーマのトークンを変えたら合わせる。
+`@layer reset, tokens, base, components` の順序は `src/styles/global.css` と `layouts/Base.astro` のインライン style の 2 箇所で宣言しているので、変えるときは両方を直す。色・fill・stroke・border/outline の論理プロパティ・shadow・margin・padding・gap・inset は、Stylelint（`stylelint-declaration-strict-value`）で変数（`tokens.css` のトークン）を強制している（`0`・`auto` などは例外。対象と例外は `.stylelintrc.json`）。これらの生の値を書けるのは `tokens.css` と `reset.css` だけ。OGP 画像の色は `scripts/og-image.mjs` に、アバターの円の色（`--color-avatar-bg`）は `scripts/icon-settings.mjs` に複製しているので、トークンを変えたら合わせる。
 
 ### 配信とヘッダー
 

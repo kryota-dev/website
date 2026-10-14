@@ -12,11 +12,10 @@
 
 | 前提                                                                                                    | テスト               |
 | ------------------------------------------------------------------------------------------------------- | -------------------- |
-| hero の `heading` は 2 行以上                                                                           | `tests/hero.spec.ts` |
 | profile の本文（職務要約）は 2 段落以上                                                                 | `tests/home.spec.ts` |
 | works と profile の本文は、表示されるテキストと Markdown が一致する（強調や HTML を入れると一致しない） | `tests/home.spec.ts` |
 | contact の本文には Markdown 形式（`[label](href)`）のリンクが 1 つ以上ある                              | `tests/home.spec.ts` |
-| site の `seo.ogImageAlt` が、`name`・hero の `byline`・改行を除いた `heading` を含む                    | `tests/seo.spec.ts`  |
+| site の `seo.ogImageAlt` が、`name`・`seo.person.name`・「`alternateName` / `jobTitle`」を含む          | `tests/seo.spec.ts`  |
 | ページ上のセクションの並び（後述）                                                                      | `tests/home.spec.ts` |
 
 ## ファイルの一覧
@@ -24,7 +23,7 @@
 | パス               | 内容                                                       | 件数 |
 | ------------------ | ---------------------------------------------------------- | ---- |
 | `site/index.md`    | サイト名・説明文・ナビやテーマ切替のラベル・SEO の人物情報 | 1 件 |
-| `hero/index.md`    | トップの見出しと導入文                                     | 1 件 |
+| `hero/index.md`    | トップの標語と導入文                                       | 1 件 |
 | `profile/index.md` | 職務要約・資格・活動・外部リンク                           | 1 件 |
 | `sections/*.md`    | 各セクションの見出し・アイコン・ナビの表示名・説明文       | 4 件 |
 | `works/*.md`       | 実績のカード 1 枚ずつ                                      | 任意 |
@@ -42,13 +41,19 @@
 
 `seo.person` は構造化データ（JSON-LD）に使います。住所は都道府県（`addressRegion`）と国コード（`addressCountry`、大文字 2 文字）までで、番地は書きません。`seo.locale` は `ja_JP` の形式です。
 
+`seo.person` の `name` はトップの大見出し（`<h1>`）にもなり、その下に「`alternateName` / `jobTitle`」を表示します。OGP 画像も同じ表記を使います。
+
 `seo.ogImageAlt` は OGP 画像の代替テキストです。画像に描く文字（後述）を変えたら、ここも合わせて直します。
 
 ## hero
 
-`heading` の `\n` は改行になり、トップの見出しと OGP 画像の両方に反映されます。空の行は作れません（先頭・末尾の改行や、改行の連続はエラー）。
+`tagline` は名前の下に表示する標語で、1 行で書きます（改行は持てません）。本文は導入文です。大見出しの名前は site の `seo.person` から読むので、hero には書きません。
 
-OGP 画像は hero の `heading`・`byline` と、site の `name` から生成します。見出しが長すぎて画像に収まらないとき、`name` や `byline` が 1 行に収まらないとき、Noto Sans JP に無い文字があるときは、ビルドが失敗します。
+## OGP 画像とアバター
+
+OGP 画像は、site の `seo.person`（名前と「`alternateName` / `jobTitle`」）・`name`（サイト名）と、アバターから生成します。標語は描きません。名前が 1 行に収まらないとき、肩書きの行がアバターの横に収まらないとき、Noto Sans JP に無い文字があるときは、ビルドが失敗します。
+
+アバターの元画像は `src/assets/avatar.png`（400×400、背景は透明）の 1 枚だけです。トップの画像・OGP 画像・favicon・apple-touch-icon は、ビルドがこれから作ります。差し替えるときは同じ大きさの PNG で置き換え、favicon の切り出し位置（`scripts/icon-settings.mjs` の `ICONS.favicon.crop`）が頭のあたりに合っているかを確かめてください。円の色は `--color-avatar-bg`（`src/styles/tokens.css`）で、テーマに関わらず同じです。
 
 ## sections
 
