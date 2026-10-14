@@ -14,7 +14,7 @@ footer:
   copyright: © kryota.dev
 seo:
   locale: ja_JP
-  ogImageAlt: "kryota.dev / Ryota Kaneko — Software Engineer / 誰かの手元で、ちゃんと動くものを。"
+  ogImageAlt: "Ryota Kaneko（金子 凌大 / Software Engineer）のアバターのイラストと、kryota.dev"
   person:
     name: Ryota Kaneko
     alternateName: 金子 凌大

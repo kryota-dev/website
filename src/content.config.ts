@@ -49,13 +49,11 @@ const site = defineCollection({
 const hero = defineCollection({
   loader: markdown("hero"),
   schema: z.object({
-    byline: text,
-    // A "\n" breaks the heading into lines (Hero and the OGP image), so each
-    // line must have text: no leading, trailing, or doubled line breaks.
-    heading: text.refine(
-      (value) => value.split("\n").every((line) => line.trim() !== ""),
-      { message: "heading must not have empty lines" },
-    ),
+    // Shown under the name as one sentence. The name and role come from
+    // site.seo.person, so they match the structured data.
+    tagline: text.refine((value) => !value.includes("\n"), {
+      message: "tagline must be one line",
+    }),
   }),
 });
 

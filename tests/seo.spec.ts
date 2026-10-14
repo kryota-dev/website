@@ -1,8 +1,9 @@
 import { readFileSync } from "node:fs";
 import { expect, test } from "@playwright/test";
 import { renderOgImage } from "../scripts/og-image.mjs";
+import { personRole } from "../scripts/person.mjs";
 import { serializeJsonLd } from "../src/lib/json-ld";
-import { legal, profile, readFrontmatter, site as readSite } from "./content";
+import { legal, profile, site as readSite } from "./content";
 import { listBuiltPages } from "./pages";
 
 const SITE_URL = "https://kryota.dev";
@@ -136,12 +137,9 @@ test("トップページは ProfilePage と Person の JSON-LD を出力する�
   });
 });
 
-test("OGP 画像の代替テキストは、画像に描くサイト名・添え書き・見出しを含む", () => {
-  const { byline, heading } = readFrontmatter<{
-    byline: string;
-    heading: string;
-  }>("hero/index.md");
-  for (const text of [site.name, byline, heading.replaceAll("\n", "")]) {
+test("OGP 画像の代替テキストは、画像に描く名前・肩書き・サイト名を含む", () => {
+  const { person } = site.seo;
+  for (const text of [site.name, person.name, personRole(person)]) {
     expect(site.seo.ogImageAlt).toContain(text);
   }
 });
@@ -194,54 +192,56 @@ test("OGP 画像は 1200×630 の画像としてデコードできる", async ({
 
 test.describe("OGP 画像の生成", () => {
   const source = readFileSync("fonts/noto-sans-jp/NotoSansJP-wght.ttf");
+  const avatar = readFileSync("src/assets/avatar.png");
   const base = {
-    name: "kryota.dev",
-    byline: "[氏名] — [肩書き]",
-    heading: "[キャッチコピー]",
+    site: "kryota.dev",
+    name: "[氏名]",
+    role: "[ふりがな] / [肩書き]",
   };
 
   test("文言を変えると画像が変わる", async () => {
-    const a = await renderOgImage(base, source);
+    const a = await renderOgImage(base, source, avatar);
     const b = await renderOgImage(
-      { ...base, heading: "[別のキャッチコピー]" },
+      { ...base, name: "[別の氏名]" },
       source,
+      avatar,
     );
     expect(a.equals(b)).toBe(false);
   });
 
-  test("長い見出しは縮めて収め、収まらないほど長ければビルドを失敗させる", async () => {
-    const long = "あ".repeat(60);
-    const png = await renderOgImage({ ...base, heading: long }, source);
+  test("アバターを右に描く", async () => {
+    const a = await renderOgImage(base, source, avatar);
+    const blank = Buffer.from(
+      // A 1×1 transparent PNG: the circle stays, the figure goes.
+      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==",
+      "base64",
+    );
+    const b = await renderOgImage(base, source, blank);
+    expect(a.equals(b)).toBe(false);
+  });
+
+  test("長い名前は縮めて 1 行に収め、収まらないほど長ければビルドを失敗させる", async () => {
+    const png = await renderOgImage(
+      { ...base, name: "a".repeat(18) },
+      source,
+      avatar,
+    );
     expect(png.readUInt32BE(16)).toBe(OG_WIDTH);
     expect(png.readUInt32BE(20)).toBe(OG_HEIGHT);
     await expect(
-      renderOgImage({ ...base, heading: "あ".repeat(200) }, source),
-    ).rejects.toThrow(/heading.*too long/);
+      renderOgImage({ ...base, name: "a".repeat(40) }, source, avatar),
+    ).rejects.toThrow(/name.*too long/);
   });
 
-  test("見出しの改行は行として描き、行数を大きさの計算に含める", async () => {
-    const joined = await renderOgImage(
-      { ...base, heading: "[一行目][二行目]" },
-      source,
-    );
-    const broken = await renderOgImage(
-      { ...base, heading: "[一行目]\n[二行目]" },
-      source,
-    );
-    expect(broken.equals(joined)).toBe(false);
-    // At the smallest size (48px), 4 lines fit and 5 do not, however short.
-    const lines = (count: number) => Array(count).fill("あ").join("\n");
+  test("アバターの横に収まらない肩書きはビルドを失敗させる", async () => {
     await expect(
-      renderOgImage({ ...base, heading: lines(4) }, source),
-    ).resolves.toBeInstanceOf(Buffer);
-    await expect(
-      renderOgImage({ ...base, heading: lines(5) }, source),
-    ).rejects.toThrow(/heading.*too long/);
+      renderOgImage({ ...base, role: "あ".repeat(30) }, source, avatar),
+    ).rejects.toThrow(/role.*does not fit/);
   });
 
   test("フォントにない文字はビルドを失敗させる", async () => {
     await expect(
-      renderOgImage({ ...base, heading: "😀" }, source),
+      renderOgImage({ ...base, role: "😀" }, source, avatar),
     ).rejects.toThrow(/missing from/);
   });
 });

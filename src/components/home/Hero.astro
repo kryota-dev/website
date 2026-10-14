@@ -1,55 +1,107 @@
 ---
+import { Image } from "astro:assets";
 import { render } from "astro:content";
+import { personRole } from "../../../scripts/person.mjs";
+import avatar from "../../assets/avatar.png";
 import { getSingle } from "../../lib/content";
 
 const hero = await getSingle("hero");
+const { person } = (await getSingle("site")).data.seo;
 const { Content } = await render(hero);
-// A line break in the heading is kept as <br> (the copy decides where it breaks).
-const headingLines = hero.data.heading.split("\n");
+
+/** Displayed size of the avatar in CSS pixels; keep in sync with .avatar. */
+const AVATAR_SIZE = { narrow: 96, wide: 200 };
 ---
 
 <section class="hero" aria-labelledby="hero-heading" data-hero>
-  <p class="byline">{hero.data.byline}</p>
-  <h1 id="hero-heading" class="heading">
-    {headingLines.map((line, index) => (
-      <>
-        {index > 0 && <br />}
-        {line}
-      </>
-    ))}
-  </h1>
-  <div class="lead">
-    <Content />
+  <!--
+    Decorative: the name is right next to it, and the illustration adds
+    nothing a screen reader user would miss.
+  -->
+  <div class="avatar">
+    <Image
+      src={avatar}
+      alt=""
+      width={AVATAR_SIZE.wide}
+      widths={[AVATAR_SIZE.narrow, AVATAR_SIZE.wide, AVATAR_SIZE.wide * 2]}
+      sizes={`(min-width: 48rem) ${AVATAR_SIZE.wide}px, ${AVATAR_SIZE.narrow}px`}
+      loading="eager"
+      fetchpriority="high"
+    />
+  </div>
+  <div class="text">
+    <h1 id="hero-heading" class="heading">
+      {person.name}
+    </h1>
+    <p class="role">{personRole(person)}</p>
+    <p class="tagline">{hero.data.tagline}</p>
+    <div class="lead">
+      <Content />
+    </div>
   </div>
 </section>
 
 <style>
   @layer components {
     .hero {
+      display: grid;
+      gap: var(--space-6);
+      align-items: center;
       max-inline-size: var(--content-max);
       margin-inline: auto;
       padding-block: clamp(4rem, 12vw, 10rem) var(--space-section);
       padding-inline: var(--space-gutter);
     }
 
-    .byline {
-      margin-block-end: var(--space-6);
-      color: var(--color-muted);
-      font-family: var(--font-mono);
-      font-size: var(--text-xs);
-      letter-spacing: 0.04em;
+    .avatar {
+      overflow: hidden;
+      inline-size: 96px;
+      aspect-ratio: 1;
+      border-radius: 50%;
+      background-color: var(--color-avatar-bg);
+    }
+
+    .avatar img {
+      inline-size: 100%;
+      block-size: 100%;
+    }
+
+    /* The avatar comes first in the DOM, so it sits above the text on
+       narrow screens and moves to the right on wide ones. */
+    @media (width >= 48rem) {
+      .hero {
+        grid-template-columns: 1fr auto;
+        gap: var(--space-12);
+      }
+
+      .avatar {
+        grid-row: 1;
+        grid-column: 2;
+        inline-size: 200px;
+      }
     }
 
     .heading {
-      max-inline-size: 14em;
       font-size: var(--text-hero);
       font-weight: 400;
       letter-spacing: 0.01em;
     }
 
+    .role {
+      margin-block-start: var(--space-2);
+      color: var(--color-muted);
+      font-size: var(--text-sm);
+      letter-spacing: 0.04em;
+    }
+
+    .tagline {
+      margin-block-start: var(--space-8);
+      font-size: var(--text-lg);
+    }
+
     .lead {
       max-inline-size: 34em;
-      margin-block-start: var(--space-8);
+      margin-block-start: var(--space-4);
       color: var(--color-muted);
     }
   }
