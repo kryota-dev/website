@@ -23,7 +23,7 @@ pnpm test:lighthouse   # Lighthouse CI（Performance ≥ 0.95、他 3 項目 = 1
 - Playwright は `pnpm build` 済みの `dist/client` を検査する。ソースを変えたらビルドし直してから走らせる。
 - 単一テスト: `pnpm exec playwright test tests/seo.spec.ts`、名前で絞るなら `-g "<title>"`、プロジェクトを絞るなら `--project=mobile-light`（`{mobile,desktop}-{light,dark}` の 4 つ）。
 - CI の品質ゲート（`.github/workflows/quality.yml`。PR では `pull-request.yml`、main への push では `main.yml` が呼ぶ）は lint・format:check・check を並列に走らせた後、build → test:html → test:links → test:a11y → test:lighthouse の順に走る。Playwright のブラウザと lychee は、その裏で入れる。PR テンプレートのチェックリストも同じ項目。
-- ワークフローの依存の準備（pnpm・Node・install）は composite action `.github/actions/setup` にまとめてある。install スクリプトは既定で動かさず、品質ゲートのジョブだけが `install-scripts: "true"` で動かす。
+- ワークフローの依存の準備（pnpm・Node・install）は composite action `.github/actions/setup` にまとめてある。install スクリプトと pnpm のキャッシュは既定で使わず、品質ゲートのジョブだけが `install-scripts: "true"`・`cache: "true"` で使う。
 
 ## アーキテクチャ
 
@@ -67,7 +67,7 @@ Markdown は Sätteri で処理し、`src/lib/markdown.ts` のプラグインで
 
 - `public/_headers` にセキュリティヘッダーを書き、CSP はビルド時に追記される。インライン script/style を足すと CSP のハッシュが変わるが、ビルドで再計算される。
 - `wrangler.jsonc`: 本番 Worker は `kryota.dev` のカスタムドメインのみで配信し、workers.dev と Preview URL は無効。
-- CI: main への push で `wrangler deploy`、PR では別 Worker（`kryota-dev-website-preview`）に `wrangler preview` で Preview を作り、URL をコメントする。どちらも配信後に `scripts/check-deployed-headers.mjs` でヘッダーを検査する。PR が閉じると `preview-cleanup.yml` が Preview を消す。
+- CI: main への push で `wrangler deploy`、PR では別 Worker（`kryota-dev-website-preview`）に `wrangler preview` で Preview を作り、URL をコメントする。どちらも成果物からは `dist/client` の静的なファイルだけを受け取り、Wrangler の設定はリポジトリの `wrangler.deploy.json` を `--config` で使う（品質ゲートで依存のコードが動くため。`docs/deployment.md`）。`wrangler.jsonc` を変えたら `wrangler.deploy.json` も合わせる（`tests/deploy-config.spec.ts` が検出する）。配信後に `scripts/check-deployed-headers.mjs` でヘッダーを検査する。PR が閉じると `preview-cleanup.yml` が Preview を消す。
 
 ### 依存の管理
 

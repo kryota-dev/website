@@ -50,10 +50,27 @@ jobs:
       # Only wrangler is needed here; install scripts stay off next to the token.
       - uses: ./.github/actions/setup
 
+      # The artifact comes from the quality gates, where dependency code runs.
+      # Only its static files are used: it is unpacked outside the workspace,
+      # so it cannot replace the checked-out files, and Wrangler takes its
+      # config from wrangler.deploy.json, never from the build output.
       - name: Download the build
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         with:
           name: site
+          path: ${{ runner.temp }}/site
+
+      # Wrangler follows symbolic links when it reads the assets, so only
+      # regular files and directories are taken.
+      - name: Take the static files from the build
+        run: |
+          unexpected="$(find "${RUNNER_TEMP}/site" ! -type f ! -type d)"
+          if [ -n "$unexpected" ]; then
+            printf 'The build has entries that are not regular files:\n%s\n' "$unexpected" >&2
+            exit 1
+          fi
+          mkdir -p dist/client
+          cp -R "${RUNNER_TEMP}/site/." dist/client/
 
       - id: preview
         name: Create or update the Preview
@@ -64,7 +81,7 @@ jobs:
         # Read the URL from Wrangler's machine-readable output file rather than
         # stdout, which also carries the upload logs.
         run: |
-          pnpm exec wrangler preview --worker-name "$PREVIEW_WORKER" --name "pr-${PR_NUMBER}"
+          pnpm exec wrangler preview --config wrangler.deploy.json --worker-name "$PREVIEW_WORKER" --name "pr-${PR_NUMBER}"
           preview_url="$(jq -ser --arg worker "$PREVIEW_WORKER" 'map(select(.type == "preview")) | last | select(.worker_name == $worker) | .preview_urls[0]' "$WRANGLER_OUTPUT_FILE_PATH")"
           [[ "$preview_url" =~ ^https://[A-Za-z0-9.-]+\.workers\.dev/?$ ]] || {
             echo "Unexpected Preview URL: $preview_url" >&2

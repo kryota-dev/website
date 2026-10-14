@@ -23,6 +23,7 @@ jobs:
       - uses: ./.github/actions/setup
         with:
           install-scripts: "true"
+          cache: "true"
 
       # The installs below run in the background while the checks and the
       # build run; their PATH changes take effect only after a wait step.
@@ -98,9 +99,9 @@ jobs:
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: site
-          path: |
-            dist/
-            .wrangler/deploy/config.json
+          # Only the static files: the deploy jobs bring their own config.
+          # .assetsignore keeps the generated wrangler.json from being served.
+          path: dist/client/
           include-hidden-files: true
           if-no-files-found: error
           retention-days: 7

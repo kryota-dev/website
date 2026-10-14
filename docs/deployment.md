@@ -11,7 +11,7 @@
 
 本番の Worker は `wrangler.jsonc` の `routes` でカスタムドメインに割り当て、`workers_dev` と `preview_urls` を無効にしています。本番の Worker には kryota.dev からしか到達できません。
 
-どちらの Worker も、配信するのは `pnpm build` の出力（`dist/`）です。Worker のエントリは `@astrojs/cloudflare` のもので、ページはすべて静的なアセットとして返します。
+どちらの Worker も、配信するのは `pnpm build` の出力（`dist/client`）です。ページはすべて静的なアセットで、Worker のコードは持ちません（ビルドが生成する Wrangler の設定にも `main` がありません）。
 
 ## CI の流れ
 
@@ -22,11 +22,21 @@
 | `pull-request.yml` | PR             | `preview` ジョブ | 走っている run を取り消す                |
 | `main.yml`         | main への push | `deploy` ジョブ  | 取り消さない（デプロイを途中で止めない） |
 
-1. 品質ゲート（`quality.yml` の `gates` ジョブ）: lint・format・型検査・ビルド・HTML 検証・リンク検査・Playwright・Lighthouse を通し、`dist/` と `.wrangler/deploy/config.json` を artifact に上げる
+1. 品質ゲート（`quality.yml` の `gates` ジョブ）: lint・format・型検査・ビルド・HTML 検証・リンク検査・Playwright・Lighthouse を通し、`dist/client/` を artifact に上げる
 2. PR のとき `preview` ジョブ: 1 の artifact を `wrangler preview` で Preview Worker に `pr-<番号>` として上げ、URL を PR にコメントする（同じコメントを更新し続ける）
 3. main への push のとき `deploy` ジョブ: 1 の artifact を `wrangler deploy` で本番に上げる
 
-デプロイのジョブはビルドし直さず、検査を通った成果物をそのまま配信します。依存の準備は composite action `.github/actions/setup` が行い、既定では `--ignore-scripts` で入れます。install スクリプトを動かすのは、Cloudflare のトークンを持たない品質ゲートのジョブだけ（`install-scripts: "true"`）です。
+デプロイのジョブはビルドし直さず、検査を通った成果物をそのまま配信します。依存の準備は composite action `.github/actions/setup` が行い、既定では `--ignore-scripts` で入れ、pnpm のストアのキャッシュも使いません。install スクリプトを動かし、キャッシュを使うのは、Cloudflare のトークンを持たない品質ゲートのジョブだけ（`install-scripts: "true"`、`cache: "true"`）です。
+
+品質ゲートでは依存のコードが動くので、その成果物とキャッシュは、トークンを持つジョブから見ると信頼できない入力です。特に、ビルドが生成する Wrangler の設定（`.wrangler/deploy/config.json` が指す `dist/client/wrangler.json`）を書き換えられると、`build.command` で `wrangler deploy` にコマンドを実行させられます。そのため、`preview` と `deploy` のジョブは、成果物から静的なファイルだけを受け取ります。
+
+- 成果物は `dist/client/` だけで、ワークスペースの外（`runner.temp`）に展開してから `dist/client` にコピーする。checkout したファイルを上書きされない。通常のファイルとディレクトリ以外（シンボリックリンクなど）があれば止める。Wrangler はアセットを読むときにシンボリックリンクをたどるので、ランナーの上のファイル（`/proc/self/environ` など）を公開されうるため
+- Wrangler には、リポジトリの `wrangler.deploy.json` を `--config` で渡す。`--config` を明示すると、Wrangler はビルドが書いた redirect を使わない
+- `dist/client/.assetsignore`（生成された `wrangler.json` などを公開しないための一覧）は成果物のものを使う。このファイルはアップロードするファイルを選ぶだけで、コマンドの実行や Wrangler の設定の変更はできない
+
+`wrangler.deploy.json` は、`wrangler.jsonc` からアダプタのエントリ（`main`）を除き、`assets.directory` を `./dist/client` にした設定です。アダプタが生成する設定にだけある `previews`（空のブロック。`wrangler preview` が要求する）も持ちます。JSON なのでコメントを書けず、説明はここに置きます。`wrangler.jsonc` を変えたら `wrangler.deploy.json` も合わせます。`tests/deploy-config.spec.ts` が、`wrangler.jsonc` の値が欠けていないことと、持っている値が生成された設定と同じことを確かめます。生成された設定にだけあるキーが新たに必要になった場合（`previews` のように）は、このテストでは分からず、`preview` ジョブの失敗で分かります。このテストは、ビルドが生成する設定に `main` が現れたとき（静的でないページを足したときなど）にも失敗します。そのときは、この配信の方式を見直します。
+
+成果物の中身（ページや `_headers`）の改ざんは、この方式でも防げません。配信後のヘッダーの検査も、期待値を成果物の `_headers` から読んでいます。
 
 デプロイの後には `scripts/check-deployed-headers.mjs` が、配信された URL のレスポンスヘッダーが `dist/client/_headers` の `/*` のルール（CSP を含む）と一致するかを確かめます。デプロイ直後は古い版が応答することがあるため、5 秒間隔で最大 12 回試します（各リクエストのタイムアウトは 10 秒）。workers.dev のホストには `X-Robots-Tag: noindex` があること、kryota.dev には無いことも検査します。
 
@@ -64,7 +74,7 @@ ruleset「main protection」で、品質ゲートのチェック `Quality / Lint
 
 ### Preview Worker を作り直すとき
 
-Preview Worker は、最初の `wrangler preview` のときに作られます。このとき Wrangler は `wrangler.jsonc` の `workers_dev: false` と `preview_urls: false` をそのまま適用するので、そのままでは Preview に到達できません。作り直したときは、ダッシュボードでその Worker の workers.dev と Preview URL を有効にしてください。
+Preview Worker は、最初の `wrangler preview` のときに作られます。このとき Wrangler は `wrangler.deploy.json` の `workers_dev: false` と `preview_urls: false` をそのまま適用するので、そのままでは Preview に到達できません。作り直したときは、ダッシュボードでその Worker の workers.dev と Preview URL を有効にしてください。
 
 Worker の名前を変えるときは、`pull-request.yml` と `preview-cleanup.yml` の `PREVIEW_WORKER` を両方直します。
 

@@ -8,27 +8,47 @@ inputs:
     description: '"true" runs the install scripts of dependencies; "false" passes --ignore-scripts.'
     required: false
     default: "false"
+  cache:
+    # The quality gates run dependency code and could write a poisoned
+    # store; jobs that hold deployment credentials must not restore it.
+    description: '"true" restores and saves the pnpm store cache; "false" installs without it.'
+    required: false
+    default: "false"
 
 runs:
   using: composite
   steps:
+    - name: Check the inputs
+      shell: bash
+      run: |
+        for input in "install-scripts=$INSTALL_SCRIPTS" "cache=$CACHE"; do
+          case "${input#*=}" in
+            true | false) ;;
+            *)
+              echo "${input%%=*} must be \"true\" or \"false\": ${input#*=}" >&2
+              exit 1
+              ;;
+          esac
+        done
+      env:
+        INSTALL_SCRIPTS: ${{ inputs.install-scripts }}
+        CACHE: ${{ inputs.cache }}
+
     - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6
 
     - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
       with:
         node-version-file: .node-version
-        cache: pnpm
+        cache: ${{ inputs.cache == 'true' && 'pnpm' || '' }}
+        package-manager-cache: false
 
     - name: Install dependencies
       shell: bash
       run: |
-        case "$INSTALL_SCRIPTS" in
-          true) pnpm install --frozen-lockfile ;;
-          false) pnpm install --frozen-lockfile --ignore-scripts ;;
-          *)
-            echo "install-scripts must be \"true\" or \"false\": $INSTALL_SCRIPTS" >&2
-            exit 1
-            ;;
-        esac
+        if [ "$INSTALL_SCRIPTS" = true ]; then
+          pnpm install --frozen-lockfile
+        else
+          pnpm install --frozen-lockfile --ignore-scripts
+        fi
       env:
         INSTALL_SCRIPTS: ${{ inputs.install-scripts }}
