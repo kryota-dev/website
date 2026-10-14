@@ -10,7 +10,7 @@ import { resolve } from "node:path";
 const SITE_ORIGIN = "https://kryota.dev";
 
 const INSTALL_HINT =
-  "lychee is not installed. Install it (e.g. `brew install lychee`); see https://lychee.cli.rs/installation/";
+  "lychee is not installed. Install it (e.g. `brew install lychee`); see https://lychee.cli.rs/guides/getting-started/";
 
 const root = resolve(process.argv[2] ?? "dist/client");
 
