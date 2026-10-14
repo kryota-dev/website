@@ -28,6 +28,13 @@
 
 デプロイのジョブはビルドし直さず、検査を通った成果物をそのまま配信します。依存の準備は composite action `.github/actions/setup` が行い、既定では `--ignore-scripts` で入れ、pnpm のストアのキャッシュも使いません。install スクリプトを動かし、キャッシュを使うのは、Cloudflare のトークンを持たない品質ゲートのジョブだけ（`install-scripts: "true"`、`cache: "true"`）です。
 
+品質ゲートでは依存のコードが動くので、その成果物とキャッシュは、トークンを持つジョブから見ると信頼できない入力です。特に、成果物の Wrangler の設定に `build.command` があると、`wrangler deploy` がそのコマンドをトークンのある環境で実行します。そのため、`preview` と `deploy` のジョブは、Wrangler を動かす前に `scripts/check-deploy-config.mjs` で設定を検査します。検査するのは次の 2 つで、どちらかに当てはまれば配信を止めます。
+
+- `.wrangler/deploy/config.json`（ビルドが書く redirect）が `dist/client/wrangler.json` 以外を指している、または知らないキーや `auxiliaryWorkers` を持っている
+- 生成された設定のトップレベルか `env.<名前>` に、`build`・`containers`（Wrangler が手元でコマンドを実行する設定）か `main` がある。このサイトは、Worker のコードを持たない静的アセットだけの Worker として配信している
+
+Wrangler に手元でコマンドを実行させる設定が増えたら、`scripts/check-deploy-config.mjs` の拒否リストに足します。アダプタの更新で redirect の形が変わったときは、`preview` ジョブの検査が PR で失敗して知らせます。
+
 デプロイの後には `scripts/check-deployed-headers.mjs` が、配信された URL のレスポンスヘッダーが `dist/client/_headers` の `/*` のルール（CSP を含む）と一致するかを確かめます。デプロイ直後は古い版が応答することがあるため、5 秒間隔で最大 12 回試します（各リクエストのタイムアウトは 10 秒）。workers.dev のホストには `X-Robots-Tag: noindex` があること、kryota.dev には無いことも検査します。
 
 PR が閉じられると、`.github/workflows/preview-cleanup.yml` が `wrangler preview delete` でその Preview を消します。`preview` ジョブは最初に PR が開いているかを確かめ、閉じていれば作成を省きます。確かめた後、作成までの間に閉じられた場合は Preview が作られますが、作成と削除は PR 番号ごとの `concurrency` で直列化しているので、削除がその後に走って消します。フォークからの PR には Cloudflare の資格情報を渡さないので、Preview は作られません。

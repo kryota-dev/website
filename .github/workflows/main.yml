@@ -39,6 +39,11 @@ jobs:
         with:
           name: site
 
+      # The artifact comes from the quality gates, where dependency code runs.
+      # Refuse a config that would make Wrangler run a command next to the token.
+      - name: Check the deploy config
+        run: node scripts/check-deploy-config.mjs
+
       # Serves kryota.dev only (routes in wrangler.jsonc).
       - name: Deploy
         run: pnpm exec wrangler deploy
