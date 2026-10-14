@@ -44,12 +44,19 @@ jobs:
           name: site
           path: ${{ runner.temp }}/site
 
+      # Wrangler follows symbolic links when it reads the assets, so only
+      # regular files and directories are taken.
       - name: Take the static files from the build
         run: |
+          unexpected="$(find "${RUNNER_TEMP}/site" ! -type f ! -type d)"
+          if [ -n "$unexpected" ]; then
+            printf 'The build has entries that are not regular files:\n%s\n' "$unexpected" >&2
+            exit 1
+          fi
           mkdir -p dist/client
           cp -R "${RUNNER_TEMP}/site/." dist/client/
 
-      # Serves kryota.dev only (routes in wrangler.jsonc).
+      # Serves kryota.dev only (routes in wrangler.deploy.json).
       - name: Deploy
         run: pnpm exec wrangler deploy --config wrangler.deploy.json
         env:

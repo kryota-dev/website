@@ -30,9 +30,9 @@
 
 品質ゲートでは依存のコードが動くので、その成果物とキャッシュは、トークンを持つジョブから見ると信頼できない入力です。特に、ビルドが生成する Wrangler の設定（`.wrangler/deploy/config.json` が指す `dist/client/wrangler.json`）を書き換えられると、`build.command` で `wrangler deploy` にコマンドを実行させられます。そのため、`preview` と `deploy` のジョブは、成果物から静的なファイルだけを受け取ります。
 
-- 成果物は `dist/client/` だけで、ワークスペースの外（`runner.temp`）に展開してから `dist/client` にコピーする。checkout したファイルを上書きされない
+- 成果物は `dist/client/` だけで、ワークスペースの外（`runner.temp`）に展開してから `dist/client` にコピーする。checkout したファイルを上書きされない。通常のファイルとディレクトリ以外（シンボリックリンクなど）があれば止める。Wrangler はアセットを読むときにシンボリックリンクをたどるので、ランナーの上のファイル（`/proc/self/environ` など）を公開されうるため
 - Wrangler には、リポジトリの `wrangler.deploy.json` を `--config` で渡す。`--config` を明示すると、Wrangler はビルドが書いた redirect を使わない
-- `dist/client/.assetsignore`（生成された `wrangler.json` などを公開しないための一覧）は成果物のものを使う。このファイルにはアップロードから外すファイルしか書けない
+- `dist/client/.assetsignore`（生成された `wrangler.json` などを公開しないための一覧）は成果物のものを使う。このファイルはアップロードするファイルを選ぶだけで、コマンドの実行や Wrangler の設定の変更はできない
 
 `wrangler.deploy.json` は、`wrangler.jsonc` からアダプタのエントリ（`main`）を除き、`assets.directory` を `./dist/client` にした設定です。アダプタが生成する設定にだけある `previews`（空のブロック。`wrangler preview` が要求する）も持ちます。JSON なのでコメントを書けず、説明はここに置きます。`wrangler.jsonc` を変えたら `wrangler.deploy.json` も合わせます。`tests/deploy-config.spec.ts` が、`wrangler.jsonc` の値が欠けていないことと、持っている値が生成された設定と同じことを確かめます。生成された設定にだけあるキーが新たに必要になった場合（`previews` のように）は、このテストでは分からず、`preview` ジョブの失敗で分かります。このテストは、ビルドが生成する設定に `main` が現れたとき（静的でないページを足したときなど）にも失敗します。そのときは、この配信の方式を見直します。
 
