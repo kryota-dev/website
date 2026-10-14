@@ -1,8 +1,17 @@
 import { readFileSync } from "node:fs";
-import { expect, test } from "@playwright/test";
-import { renderOgImage } from "../scripts/og-image.mjs";
+import { Resvg } from "@resvg/resvg-js";
+import { expect, test, type Page } from "@playwright/test";
+import { ICONS } from "../scripts/icon-settings.mjs";
+import { renderIcon } from "../scripts/icons.mjs";
+import {
+  layoutText,
+  NAME_SIZES,
+  OG_TEXT_WIDTH,
+  renderOgImage,
+} from "../scripts/og-image.mjs";
+import { personRole } from "../scripts/person.mjs";
 import { serializeJsonLd } from "../src/lib/json-ld";
-import { legal, profile, readFrontmatter, site as readSite } from "./content";
+import { legal, profile, site as readSite } from "./content";
 import { listBuiltPages } from "./pages";
 
 const SITE_URL = "https://kryota.dev";
@@ -136,12 +145,11 @@ test("トップページは ProfilePage と Person の JSON-LD を出力する�
   });
 });
 
-test("OGP 画像の代替テキストは、画像に描くサイト名・添え書き・見出しを含む", () => {
-  const { byline, heading } = readFrontmatter<{
-    byline: string;
-    heading: string;
-  }>("hero/index.md");
-  for (const text of [site.name, byline, heading.replaceAll("\n", "")]) {
+test("OGP 画像の代替テキストは、画像に描く名前・肩書き・サイト名を含む", () => {
+  const { person } = site.seo;
+  const role = `${person.alternateName} / ${person.jobTitle}`;
+  expect(personRole(person)).toBe(role);
+  for (const text of [site.name, person.name, role]) {
     expect(site.seo.ogImageAlt).toContain(text);
   }
 });
@@ -192,56 +200,201 @@ test("OGP 画像は 1200×630 の画像としてデコードできる", async ({
   expect(size).toEqual({ width: OG_WIDTH, height: OG_HEIGHT });
 });
 
+/** Fixed by the requirements (AC-A03), not read from the code. */
+const FAVICON_SIZE = 32;
+const TOUCH_ICON_SIZE = 180;
+/** The avatar sits right of the text column (AC-A04): x from here to the edge. */
+const OG_AVATAR_MIN_X = 80 + OG_TEXT_WIDTH;
+
+/** A PNG with nothing drawn, to render the layout without the figure. */
+const blankPng = () =>
+  new Resvg('<svg xmlns="http://www.w3.org/2000/svg" width="1" height="1"/>')
+    .render()
+    .asPng();
+
+/** Bounding box of the pixels that differ between two PNGs of the same size. */
+async function diffBox(page: Page, a: Buffer, b: Buffer) {
+  const urls = [a, b].map(
+    (png) => `data:image/png;base64,${png.toString("base64")}`,
+  );
+  return page.evaluate(async ([first, second]) => {
+    const pixels = async (src: string) => {
+      const image = new Image();
+      image.src = src;
+      await image.decode();
+      const canvas = document.createElement("canvas");
+      canvas.width = image.naturalWidth;
+      canvas.height = image.naturalHeight;
+      const context = canvas.getContext("2d");
+      if (!context) throw new Error("2D canvas is unavailable");
+      context.drawImage(image, 0, 0);
+      return context.getImageData(0, 0, canvas.width, canvas.height);
+    };
+    const [x, y] = [await pixels(first), await pixels(second)];
+    const box = { minX: Infinity, minY: Infinity, maxX: -1, maxY: -1 };
+    for (let i = 0; i < x.data.length; i += 4) {
+      if (x.data.slice(i, i + 4).every((v, k) => v === y.data[i + k])) continue;
+      const px = (i / 4) % x.width;
+      const py = Math.floor(i / 4 / x.width);
+      box.minX = Math.min(box.minX, px);
+      box.minY = Math.min(box.minY, py);
+      box.maxX = Math.max(box.maxX, px);
+      box.maxY = Math.max(box.maxY, py);
+    }
+    return box;
+  }, urls);
+}
+
 test.describe("OGP 画像の生成", () => {
   const source = readFileSync("fonts/noto-sans-jp/NotoSansJP-wght.ttf");
+  const avatar = readFileSync("src/assets/avatar.png");
   const base = {
-    name: "kryota.dev",
-    byline: "[氏名] — [肩書き]",
-    heading: "[キャッチコピー]",
+    site: "kryota.dev",
+    name: "[氏名]",
+    role: "[ふりがな] / [肩書き]",
   };
 
-  test("文言を変えると画像が変わる", async () => {
-    const a = await renderOgImage(base, source);
-    const b = await renderOgImage(
-      { ...base, heading: "[別のキャッチコピー]" },
-      source,
-    );
-    expect(a.equals(b)).toBe(false);
+  test("サイト名・名前・肩書きのどれを変えても画像が変わる", async () => {
+    const a = await renderOgImage(base, source, avatar);
+    for (const field of ["site", "name", "role"] as const) {
+      const b = await renderOgImage(
+        { ...base, [field]: `[別の${field}]` },
+        source,
+        avatar,
+      );
+      expect(a.equals(b), field).toBe(false);
+    }
   });
 
-  test("長い見出しは縮めて収め、収まらないほど長ければビルドを失敗させる", async () => {
-    const long = "あ".repeat(60);
-    const png = await renderOgImage({ ...base, heading: long }, source);
-    expect(png.readUInt32BE(16)).toBe(OG_WIDTH);
-    expect(png.readUInt32BE(20)).toBe(OG_HEIGHT);
-    await expect(
-      renderOgImage({ ...base, heading: "あ".repeat(200) }, source),
-    ).rejects.toThrow(/heading.*too long/);
+  test("アバターは文字の列の右に描き、文字の領域には描かない", async ({
+    page,
+  }) => {
+    const box = await diffBox(
+      page,
+      await renderOgImage(base, source, avatar),
+      await renderOgImage(base, source, blankPng()),
+    );
+    expect(box.maxX).toBeGreaterThan(box.minX);
+    expect(box.minX).toBeGreaterThanOrEqual(OG_AVATAR_MIN_X);
+    expect(box.maxX).toBeLessThan(OG_WIDTH - 80);
   });
 
-  test("見出しの改行は行として描き、行数を大きさの計算に含める", async () => {
-    const joined = await renderOgImage(
-      { ...base, heading: "[一行目][二行目]" },
-      source,
+  test("名前は実際の字幅で測って縮め、最小でも 1 行に収まらなければ失敗させる", () => {
+    const size = (name: string) =>
+      layoutText({ ...base, name }, source).nameSize;
+    expect(size("Ryota Kaneko")).toBe(NAME_SIZES[0]);
+    // Wide and narrow Latin letters differ by more than 3×: W is 0.84em, i 0.25em.
+    const wide = size("W".repeat(14));
+    expect(wide).toBeLessThan(NAME_SIZES[0]);
+    expect(size("i".repeat(14))).toBe(NAME_SIZES[0]);
+    expect(size("i".repeat(30))).toBeGreaterThan(wide);
+    expect(() => size("W".repeat(20))).toThrow(/name.*too long/);
+  });
+
+  test("アバターの横に収まらない肩書きと、1 行に収まらないサイト名は失敗させる", () => {
+    expect(() => layoutText({ ...base, role: "W".repeat(30) }, source)).toThrow(
+      /role.*does not fit/,
     );
-    const broken = await renderOgImage(
-      { ...base, heading: "[一行目]\n[二行目]" },
-      source,
+    expect(() => layoutText({ ...base, site: "W".repeat(30) }, source)).toThrow(
+      /site.*does not fit/,
     );
-    expect(broken.equals(joined)).toBe(false);
-    // At the smallest size (48px), 4 lines fit and 5 do not, however short.
-    const lines = (count: number) => Array(count).fill("あ").join("\n");
-    await expect(
-      renderOgImage({ ...base, heading: lines(4) }, source),
-    ).resolves.toBeInstanceOf(Buffer);
-    await expect(
-      renderOgImage({ ...base, heading: lines(5) }, source),
-    ).rejects.toThrow(/heading.*too long/);
   });
 
   test("フォントにない文字はビルドを失敗させる", async () => {
     await expect(
-      renderOgImage({ ...base, heading: "😀" }, source),
+      renderOgImage({ ...base, role: "😀" }, source, avatar),
     ).rejects.toThrow(/missing from/);
+  });
+});
+
+test.describe("favicon と apple-touch-icon", () => {
+  test("head に link があり、要件の大きさの PNG が配信される", async ({
+    page,
+  }) => {
+    expect(ICONS.favicon.size).toBe(FAVICON_SIZE);
+    expect(ICONS.appleTouch.size).toBe(TOUCH_ICON_SIZE);
+    await page.goto("/");
+    const icon = page.locator('head link[rel="icon"]');
+    await expect(icon).toHaveCount(1);
+    await expect(icon).toHaveAttribute("href", ICONS.favicon.path);
+    await expect(icon).toHaveAttribute("type", "image/png");
+    await expect(icon).toHaveAttribute(
+      "sizes",
+      `${FAVICON_SIZE}x${FAVICON_SIZE}`,
+    );
+    const touch = page.locator('head link[rel="apple-touch-icon"]');
+    await expect(touch).toHaveCount(1);
+    await expect(touch).toHaveAttribute("href", ICONS.appleTouch.path);
+    for (const [path, size] of [
+      [ICONS.favicon.path, FAVICON_SIZE],
+      [ICONS.appleTouch.path, TOUCH_ICON_SIZE],
+    ] as const) {
+      const decoded = await page.evaluate(async (src) => {
+        const image = new Image();
+        image.src = src;
+        await image.decode();
+        return { width: image.naturalWidth, height: image.naturalHeight };
+      }, path);
+      expect(decoded, path).toEqual({ width: size, height: size });
+    }
+  });
+
+  test("人物を描き、favicon は角が透明な円、apple-touch-icon は角まで塗る", async ({
+    page,
+  }) => {
+    await page.goto("/");
+    const stats = await page.evaluate(
+      async (paths) => {
+        const read = async (src: string) => {
+          const image = new Image();
+          image.src = src;
+          await image.decode();
+          const canvas = document.createElement("canvas");
+          canvas.width = image.naturalWidth;
+          canvas.height = image.naturalHeight;
+          const context = canvas.getContext("2d");
+          if (!context) throw new Error("2D canvas is unavailable");
+          context.drawImage(image, 0, 0);
+          const { data } = context.getImageData(
+            0,
+            0,
+            canvas.width,
+            canvas.height,
+          );
+          // The figure is dark; the circle and the square are light.
+          let dark = 0;
+          for (let i = 0; i < data.length; i += 4) {
+            if (data[i + 3] > 0 && data[i] + data[i + 1] + data[i + 2] < 3 * 96)
+              dark += 1;
+          }
+          return { cornerAlpha: data[3], darkShare: dark / (data.length / 4) };
+        };
+        return Promise.all(paths.map(read));
+      },
+      [ICONS.favicon.path, ICONS.appleTouch.path],
+    );
+    const [favicon, touch] = stats;
+    expect(favicon.cornerAlpha).toBe(0);
+    expect(touch.cornerAlpha).toBe(255);
+    for (const { darkShare } of stats) expect(darkShare).toBeGreaterThan(0.2);
+  });
+
+  test("切り出しが元画像の外にはみ出す、または不正な値なら失敗する", () => {
+    const avatar = readFileSync("src/assets/avatar.png");
+    const icon = (crop: { x: number; y: number; size: number }) => () =>
+      renderIcon(avatar, { size: 32, shape: "circle", crop });
+    expect(icon({ x: 300, y: 0, size: 200 })).toThrow(/outside the avatar/);
+    expect(icon({ x: Number.NaN, y: 0, size: 200 })).toThrow(/invalid/);
+    expect(icon({ x: 0, y: 0, size: 0 })).toThrow(/invalid/);
+  });
+
+  test("元画像が想定の大きさでなければ失敗する", () => {
+    expect(() =>
+      renderIcon(blankPng(), {
+        size: 32,
+        shape: "circle",
+        crop: { x: 0, y: 0, size: 1 },
+      }),
+    ).toThrow(/400×400/);
   });
 });

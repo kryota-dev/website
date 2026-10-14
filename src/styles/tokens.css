@@ -22,6 +22,11 @@
   --color-on-accent: #fff;
   --color-accent-soft: #dcebdd;
 
+  /* The circle behind the avatar stays light in both themes, so the dark
+     figure is visible on a dark page. Keep in sync with scripts/og-image.mjs
+     and scripts/icons.mjs. */
+  --color-avatar-bg: #ebe5d6;
+
   /* font */
 
   /* Web fonts and their fallbacks come from astro.config.mjs (<Font />). */

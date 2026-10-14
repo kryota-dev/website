@@ -237,9 +237,10 @@ test("wght の変化が、配信した和文フォントの描画の太さに連
   );
   expect(headingFamily).toBe(family);
 
-  // Use the heading's own non-ASCII characters that the served subset covers,
+  // The heading (the name) is ASCII, so take non-ASCII characters from the
+  // tagline below it, which uses the same face; the served subset covers them,
   // so the ink comes from this face and not from a system fallback.
-  const text = await heading.innerText();
+  const text = await page.locator("[data-hero] .tagline").innerText();
   const sample = [...new Set(text)]
     .filter(
       (char) =>

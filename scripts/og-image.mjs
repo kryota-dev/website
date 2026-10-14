@@ -1,6 +1,6 @@
 // @ts-check
-// Generates the single OGP image (1200×630 PNG) from the Markdown content.
-// Runs at the end of scripts/build.mjs, after the final build.
+// Generates the single OGP image (1200×630 PNG) from the Markdown content
+// and the avatar. Runs at the end of scripts/build.mjs, after the final build.
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -10,7 +10,9 @@ import satori from "satori";
 import subsetFont from "subset-font";
 import { parse } from "yaml";
 import { NOTO_SOURCE } from "./font-paths.mjs";
+import { AVATAR_BG, AVATAR_SOURCE } from "./icon-settings.mjs";
 import { OG_IMAGE } from "./og-settings.mjs";
+import { personRole } from "./person.mjs";
 import { verifySource } from "./subset-fonts.mjs";
 
 /** Light theme tokens (keep in sync with src/styles/tokens.css). */
@@ -18,7 +20,6 @@ const COLORS = {
   bg: "#f6f3ea",
   text: "#1f1d19",
   muted: "#5b574e",
-  accent: "#2b7350",
   border: "#ddd6c6",
 };
 
@@ -28,75 +29,57 @@ const PADDING = 80;
 const CONTENT_WIDTH = OG_IMAGE.width - PADDING * 2;
 const CONTENT_HEIGHT = OG_IMAGE.height - PADDING * 2;
 
+/** The avatar circle on the right, and the gap to the text on its left. */
+const AVATAR_SIZE = 260;
+const AVATAR_GAP = 64;
+const TEXT_WIDTH = CONTENT_WIDTH - AVATAR_SIZE - AVATAR_GAP;
+
 /** Readable at card size (about 360px wide on phones). */
 const SMALL_TEXT = 44;
 const SMALL_LINE_HEIGHT = 1.4;
+/** The role line sits beside the avatar, so it is a little smaller. */
+const ROLE_TEXT = 36;
+const ROLE_GAP = 16;
 const FOOTER_RULE = 2;
 const FOOTER_GAP = 32;
-const MIN_GAP = 24;
 
-/** The heading shrinks through these sizes until it fits; otherwise the build fails. */
-const HEADING_SIZES = [80, 72, 64, 56, 48];
-const HEADING_LINE_HEIGHT = 1.3;
-/** Width estimate per character in em: full-width (CJK) vs. other. */
-const FULL_WIDTH_EM = 1;
-const NARROW_EM = 0.6;
-/** Safety margin for line breaking (words and kinsoku move characters to the next line). */
-const WRAP_MARGIN = 1.05;
+/** The name shrinks through these sizes until it fits on one line; otherwise the build fails. */
+export const NAME_SIZES = [96, 88, 80, 72, 64, 56, 48];
+const NAME_LINE_HEIGHT = 1.2;
+/** Room for satori's rounding and kerning against the measured width. */
+const FIT_MARGIN = 1.02;
+/** Text widths available to the name and the role, and to the site name. */
+export const OG_TEXT_WIDTH = TEXT_WIDTH;
+export const OG_CONTENT_WIDTH = CONTENT_WIDTH;
 
 /**
  * @typedef {object} OgText
- * @property {string} name Site name (site/index.md)
- * @property {string} byline Hero byline (hero/index.md)
- * @property {string} heading Hero heading (hero/index.md)
+ * @property {string} site Site name (site/index.md "name")
+ * @property {string} name The person's name (site.seo.person.name)
+ * @property {string} role The line under the name (see scripts/person.mjs)
  */
-
-/** @param {string} char */
-const isFullWidth = (char) => (char.codePointAt(0) ?? 0) > 0x2e7f;
-
-/** @param {string} text @param {number} size */
-function estimateWidth(text, size) {
-  let em = 0;
-  for (const char of text) em += isFullWidth(char) ? FULL_WIDTH_EM : NARROW_EM;
-  return em * size * WRAP_MARGIN;
-}
-
-/** @param {string} text @param {number} size */
-const fitsOneLine = (text, size) => estimateWidth(text, size) <= CONTENT_WIDTH;
 
 /**
- * Picks the largest heading size whose wrapped height fits between the byline
- * and the footer. Throws when even the smallest size does not fit.
- * @param {string} heading
+ * Measures text with the font's own advances at the given weight.
+ * @param {import("fontkit").Font} font
+ * @param {string} text
+ * @param {number} size
+ * @param {number} weight
  */
-function headingSize(heading) {
-  const available =
-    CONTENT_HEIGHT -
-    SMALL_TEXT * SMALL_LINE_HEIGHT -
-    (FOOTER_GAP + FOOTER_RULE + SMALL_TEXT * SMALL_LINE_HEIGHT) -
-    MIN_GAP * 2;
-  for (const size of HEADING_SIZES) {
-    // Each line of the heading (split at "\n") wraps on its own.
-    const lines = heading
-      .split("\n")
-      .reduce(
-        (sum, line) =>
-          sum +
-          Math.max(1, Math.ceil(estimateWidth(line, size) / CONTENT_WIDTH)),
-        0,
-      );
-    if (lines * size * HEADING_LINE_HEIGHT <= available) return size;
-  }
-  throw new Error(
-    `hero/index.md "heading" is too long for the OGP image (${[...heading].length} characters)`,
-  );
+function measure(font, text, size, weight) {
+  const face = font.getVariation({ wght: weight });
+  return (face.layout(text).advanceWidth / face.unitsPerEm) * size * FIT_MARGIN;
 }
 
 /**
- * @param {Buffer} source
+ * Checks the text against the font and the layout, and picks the largest
+ * name size that fits on one line beside the avatar. Throws when a glyph is
+ * missing or any line does not fit.
  * @param {OgText} text
+ * @param {Buffer} source
+ * @returns {{ nameSize: number }}
  */
-function assertRenderable(source, text) {
+export function layoutText(text, source) {
   const font = create(source);
   if (!("hasGlyphForCodePoint" in font))
     throw new Error(`${NOTO_SOURCE} is a collection`);
@@ -112,13 +95,21 @@ function assertRenderable(source, text) {
       );
     }
   }
-  for (const field of /** @type {const} */ (["name", "byline"])) {
-    if (!fitsOneLine(text[field], SMALL_TEXT)) {
-      throw new Error(
-        `OGP "${field}" does not fit on one line: ${text[field]}`,
-      );
-    }
+  if (measure(font, text.role, ROLE_TEXT, 400) > TEXT_WIDTH) {
+    throw new Error(`OGP "role" does not fit beside the avatar: ${text.role}`);
   }
+  if (measure(font, text.site, SMALL_TEXT, 700) > CONTENT_WIDTH) {
+    throw new Error(`OGP "site" does not fit on one line: ${text.site}`);
+  }
+  const nameSize = NAME_SIZES.find(
+    (size) => measure(font, text.name, size, 400) <= TEXT_WIDTH,
+  );
+  if (nameSize === undefined) {
+    throw new Error(
+      `site.seo.person "name" is too long for the OGP image (${[...text.name].length} characters)`,
+    );
+  }
+  return { nameSize };
 }
 
 /**
@@ -126,18 +117,22 @@ function assertRenderable(source, text) {
  * @param {string} type
  * @param {Record<string, string | number>} style
  * @param {unknown} [children]
+ * @param {Record<string, string | number>} [props]
  */
-const el = (type, style, children) => ({ type, props: { style, children } });
+const el = (type, style, children, props = {}) => ({
+  type,
+  props: { ...props, style, children },
+});
 
 /**
  * Renders the OGP image as PNG.
  * @param {OgText} text
  * @param {Buffer} source The original variable font (verified by the caller).
+ * @param {Buffer} avatar The avatar PNG (transparent background).
  * @returns {Promise<Buffer>}
  */
-export async function renderOgImage(text, source) {
-  assertRenderable(source, text);
-  const size = headingSize(text.heading);
+export async function renderOgImage(text, source, avatar) {
+  const { nameSize: size } = layoutText(text, source);
   // satori cannot read variable fonts: pin wght per weight and keep only these characters.
   const chars = Object.values(text).join("");
   const fonts = await Promise.all(
@@ -171,45 +166,69 @@ export async function renderOgImage(text, source) {
         "div",
         {
           display: "flex",
-          fontSize: SMALL_TEXT,
-          lineHeight: SMALL_LINE_HEIGHT,
-          color: COLORS.muted,
-        },
-        text.byline,
-      ),
-      el(
-        "div",
-        {
-          display: "flex",
-          flexDirection: "column",
-          fontSize: size,
-          // The same weight as the hero heading on the site.
-          fontWeight: 400,
-          lineHeight: HEADING_LINE_HEIGHT,
-        },
-        text.heading.split("\n").map((line) => el("div", {}, line)),
-      ),
-      el(
-        "div",
-        {
-          display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
+          flexGrow: 1,
+        },
+        [
+          el(
+            "div",
+            { display: "flex", flexDirection: "column", width: TEXT_WIDTH },
+            [
+              el(
+                "div",
+                {
+                  display: "flex",
+                  fontSize: size,
+                  // The same weight as the hero heading on the site.
+                  fontWeight: 400,
+                  lineHeight: NAME_LINE_HEIGHT,
+                },
+                text.name,
+              ),
+              el(
+                "div",
+                {
+                  display: "flex",
+                  marginTop: ROLE_GAP,
+                  fontSize: ROLE_TEXT,
+                  lineHeight: SMALL_LINE_HEIGHT,
+                  color: COLORS.muted,
+                },
+                text.role,
+              ),
+            ],
+          ),
+          el(
+            "div",
+            {
+              display: "flex",
+              width: AVATAR_SIZE,
+              height: AVATAR_SIZE,
+              overflow: "hidden",
+              borderRadius: AVATAR_SIZE / 2,
+              backgroundColor: AVATAR_BG,
+            },
+            el("img", { width: AVATAR_SIZE, height: AVATAR_SIZE }, undefined, {
+              src: `data:image/png;base64,${avatar.toString("base64")}`,
+              width: AVATAR_SIZE,
+              height: AVATAR_SIZE,
+            }),
+          ),
+        ],
+      ),
+      el(
+        "div",
+        {
+          display: "flex",
+          marginTop: FOOTER_GAP,
           paddingTop: FOOTER_GAP,
           borderTop: `${FOOTER_RULE}px solid ${COLORS.border}`,
           fontSize: SMALL_TEXT,
           lineHeight: SMALL_LINE_HEIGHT,
           fontWeight: 700,
         },
-        [
-          el("div", { display: "flex" }, text.name),
-          el("div", {
-            width: 24,
-            height: 24,
-            borderRadius: 999,
-            backgroundColor: COLORS.accent,
-          }),
-        ],
+        text.site,
       ),
     ],
   );
@@ -229,41 +248,64 @@ export async function renderOgImage(text, source) {
 const FRONTMATTER = /^---\r?\n([\s\S]*?)\r?\n---/;
 
 /**
- * @param {string} file
- * @param {string[]} keys
- * @returns {Promise<Record<string, string>>}
+ * @param {unknown} value
+ * @param {string} where
  */
-async function readStrings(file, keys) {
+function nonEmptyString(value, where) {
+  if (typeof value !== "string" || value === "") {
+    throw new Error(`${where}: expected a non-empty string`);
+  }
+  return value;
+}
+
+/**
+ * @param {unknown} value
+ * @param {string} where
+ * @returns {Record<string, unknown>}
+ */
+function asRecord(value, where) {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    throw new Error(`${where}: expected a mapping`);
+  }
+  return /** @type {Record<string, unknown>} */ (value);
+}
+
+/**
+ * Reads the OGP text from site/index.md.
+ * @returns {Promise<OgText>}
+ */
+async function readText() {
+  const file = "site/index.md";
   const source = await readFile(`src/content/${file}`, "utf8");
   const match = source.match(FRONTMATTER);
   if (!match) throw new Error(`${file} has no frontmatter`);
-  /** @type {unknown} */
-  const data = parse(match[1]);
-  if (typeof data !== "object" || data === null || Array.isArray(data)) {
-    throw new Error(`${file} frontmatter is not a mapping`);
-  }
-  /** @type {Record<string, string>} */
-  const result = {};
-  for (const key of keys) {
-    const value = /** @type {Record<string, unknown>} */ (data)[key];
-    if (typeof value !== "string" || value === "") {
-      throw new Error(`${file}: expected a non-empty string for "${key}"`);
-    }
-    result[key] = value;
-  }
-  return result;
+  const data = asRecord(parse(match[1]), file);
+  const person = asRecord(
+    asRecord(data.seo, `${file} seo`).person,
+    `${file} seo.person`,
+  );
+  const alternateName = nonEmptyString(
+    person.alternateName,
+    `${file} seo.person.alternateName`,
+  );
+  const jobTitle = nonEmptyString(
+    person.jobTitle,
+    `${file} seo.person.jobTitle`,
+  );
+  return {
+    site: nonEmptyString(data.name, `${file} name`),
+    name: nonEmptyString(person.name, `${file} seo.person.name`),
+    role: personRole({ alternateName, jobTitle }),
+  };
 }
 
 async function main() {
   process.chdir(fileURLToPath(new URL("..", import.meta.url)));
-  const { name } = await readStrings("site/index.md", ["name"]);
-  const { byline, heading } = await readStrings("hero/index.md", [
-    "byline",
-    "heading",
-  ]);
+  const text = await readText();
   const source = await readFile(NOTO_SOURCE);
   verifySource(source);
-  const png = await renderOgImage({ name, byline, heading }, source);
+  const avatar = await readFile(AVATAR_SOURCE);
+  const png = await renderOgImage(text, source, avatar);
   await mkdir(dirname(OG_IMAGE.output), { recursive: true });
   await writeFile(OG_IMAGE.output, png);
   console.log(

@@ -1,5 +1,6 @@
 ---
 import { Font } from "astro:assets";
+import { ICONS } from "../../scripts/icon-settings.mjs";
 import Seo from "../components/Seo.astro";
 import "../styles/global.css";
 
@@ -25,7 +26,13 @@ const { title, description } = Astro.props;
     </style>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <Seo title={title} description={description} />
-    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link
+      rel="icon"
+      href={ICONS.favicon.path}
+      type="image/png"
+      sizes={`${ICONS.favicon.size}x${ICONS.favicon.size}`}
+    />
+    <link rel="apple-touch-icon" href={ICONS.appleTouch.path} />
     <Font cssVariable="--font-noto-sans-jp" preload />
     <Font cssVariable="--font-ibm-plex-mono" />
     <slot name="head" />

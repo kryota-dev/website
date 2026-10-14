@@ -1,7 +1,8 @@
 import { expect, test, type Page } from "@playwright/test";
-import { readFrontmatter } from "./content";
+import { AVATAR_BG } from "../scripts/icon-settings.mjs";
+import { readBody, readFrontmatter, site } from "./content";
 
-/** Fixed by the requirements (AC-050), not read from the code. */
+/** Fixed by the requirements (AC-050: the name, 24–40px, weight 400), not read from the code. */
 const HEADING_WEIGHT = 400;
 const MIN_FONT_SIZE = 24;
 const MAX_FONT_SIZE = 40;
@@ -9,6 +10,8 @@ const MAX_FONT_SIZE = 40;
 const FRAMES_AFTER = 10;
 /** Narrower viewports clamp to the minimum size, wider ones to the maximum. */
 const WIDE_VIEWPORT = 1024;
+/** The avatar moves beside the heading from 48rem (768px) up. */
+const SIDE_BY_SIDE_VIEWPORT = 768;
 
 const heading = (page: Page) => page.locator("#hero-heading");
 
@@ -65,25 +68,72 @@ test("見出しの文字の大きさは、狭い画面で 24px、広い画面で
   expect(size).toBe(width < WIDE_VIEWPORT ? MIN_FONT_SIZE : MAX_FONT_SIZE);
 });
 
-test("Hero は添え書き・見出し・リード文だけで、問い合わせへのリンクもボタンも無い", async ({
+test("Hero は名前・肩書き・標語・リード文とアバターだけで、問い合わせへのリンクもボタンも無い", async ({
   page,
 }) => {
+  const { person } = site().seo;
+  const { tagline } = readFrontmatter<{ tagline: string }>("hero/index.md");
   await page.goto("/");
   const hero = page.locator("[data-hero]");
   await expect(hero.getByRole("button")).toHaveCount(0);
   await expect(hero.locator('a[href*="#contact"]')).toHaveCount(0);
-  await expect(hero.locator(":scope > *")).toHaveCount(3);
+  await expect(heading(page)).toHaveText(person.name);
+  await expect(hero.locator(".role")).toHaveText(
+    `${person.alternateName} / ${person.jobTitle}`,
+  );
+  await expect(hero.locator(".tagline")).toHaveText(tagline);
+  await expect(hero.locator(".lead")).toHaveText(readBody("hero/index.md"));
+  await expect(hero.locator("img")).toHaveCount(1);
 });
 
-test("見出しの改行は hero/index.md のとおりに <br> で入る", async ({
+test("アバターは装飾として alt を空にし、大きさを持って読み込まれる", async ({
   page,
 }) => {
-  const { heading } = readFrontmatter<{ heading: string }>("hero/index.md");
-  const lines = heading.split("\n");
-  // The current copy breaks the heading, so the <br> path is exercised.
-  expect(lines.length).toBeGreaterThan(1);
   await page.goto("/");
-  const h1 = page.locator("#hero-heading");
-  await expect(h1.locator("br")).toHaveCount(lines.length - 1);
-  expect((await h1.innerText()).split("\n")).toEqual(lines);
+  const image = page.locator("[data-hero] .avatar img");
+  await expect(image).toHaveAttribute("alt", "");
+  await expect(image).toHaveAttribute("width", /^\d+$/);
+  await expect(image).toHaveAttribute("height", /^\d+$/);
+  const loaded = await image.evaluate(async (img: HTMLImageElement) => {
+    await img.decode();
+    return img.naturalWidth > 0;
+  });
+  expect(loaded).toBe(true);
+});
+
+test("アバターの円は、テーマに関わらず同じ明るい色", async ({ page }) => {
+  await page.goto("/");
+  const avatar = page.locator("[data-hero] .avatar");
+  const expected = await page.evaluate((hex) => {
+    const probe = document.createElement("div");
+    probe.style.color = hex;
+    document.body.append(probe);
+    const color = getComputedStyle(probe).color;
+    probe.remove();
+    return color;
+  }, AVATAR_BG);
+  await expect(avatar).toHaveCSS("background-color", expected);
+  await expect(avatar).toHaveCSS("border-radius", "50%");
+});
+
+test("アバターは 768px 以上で見出しの右に、それより狭い画面で見出しの上に置く", async ({
+  page,
+}) => {
+  const height = page.viewportSize()?.height ?? 900;
+  for (const width of [
+    SIDE_BY_SIDE_VIEWPORT - 1,
+    SIDE_BY_SIDE_VIEWPORT,
+    page.viewportSize()?.width ?? 0,
+  ]) {
+    await page.setViewportSize({ width, height });
+    await page.goto("/");
+    const avatar = await page.locator("[data-hero] .avatar").boundingBox();
+    const h1 = await heading(page).boundingBox();
+    if (!avatar || !h1) throw new Error("Hero is not rendered");
+    if (width < SIDE_BY_SIDE_VIEWPORT) {
+      expect(avatar.y + avatar.height, String(width)).toBeLessThanOrEqual(h1.y);
+    } else {
+      expect(avatar.x, String(width)).toBeGreaterThanOrEqual(h1.x + h1.width);
+    }
+  }
 });
