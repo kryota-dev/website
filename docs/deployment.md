@@ -21,7 +21,7 @@
 2. PR のとき `preview` ジョブ: 1 の artifact を `wrangler preview` で Preview Worker に `pr-<番号>` として上げ、URL を PR にコメントする（同じコメントを更新し続ける）
 3. main への push のとき `deploy` ジョブ: 1 の artifact を `wrangler deploy` で本番に上げる
 
-デプロイのジョブはビルドし直さず、検査を通った成果物をそのまま配信します。依存の準備は composite action `.github/actions/setup` が行い、既定では `--ignore-scripts` で入れます。install スクリプトを動かすのは、トークンを持たない `ci` ジョブだけ（`install-scripts: "true"`）です。
+デプロイのジョブはビルドし直さず、検査を通った成果物をそのまま配信します。依存の準備は composite action `.github/actions/setup` が行い、既定では `--ignore-scripts` で入れます。install スクリプトを動かすのは、Cloudflare のトークンを持たない `ci` ジョブだけ（`install-scripts: "true"`）です。
 
 デプロイの後には `scripts/check-deployed-headers.mjs` が、配信された URL のレスポンスヘッダーが `dist/client/_headers` の `/*` のルール（CSP を含む）と一致するかを確かめます。デプロイ直後は古い版が応答することがあるため、5 秒間隔で最大 12 回試します（各リクエストのタイムアウトは 10 秒）。workers.dev のホストには `X-Robots-Tag: noindex` があること、kryota.dev には無いことも検査します。
 
