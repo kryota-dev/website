@@ -9,7 +9,7 @@ permissions:
 
 # A production deployment that has passed the gates is never cancelled midway.
 concurrency:
-  group: main
+  group: production-deploy
   cancel-in-progress: false
 
 jobs:
