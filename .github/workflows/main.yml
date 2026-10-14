@@ -34,19 +34,24 @@ jobs:
       # Only wrangler is needed here; install scripts stay off next to the token.
       - uses: ./.github/actions/setup
 
+      # The artifact comes from the quality gates, where dependency code runs.
+      # Only its static files are used: it is unpacked outside the workspace,
+      # so it cannot replace the checked-out files, and Wrangler takes its
+      # config from wrangler.deploy.json, never from the build output.
       - name: Download the build
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         with:
           name: site
+          path: ${{ runner.temp }}/site
 
-      # The artifact comes from the quality gates, where dependency code runs.
-      # Refuse a config that would make Wrangler run a command next to the token.
-      - name: Check the deploy config
-        run: node scripts/check-deploy-config.mjs
+      - name: Take the static files from the build
+        run: |
+          mkdir -p dist/client
+          cp -R "${RUNNER_TEMP}/site/." dist/client/
 
       # Serves kryota.dev only (routes in wrangler.jsonc).
       - name: Deploy
-        run: pnpm exec wrangler deploy
+        run: pnpm exec wrangler deploy --config wrangler.deploy.json
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}

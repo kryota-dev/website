@@ -67,7 +67,7 @@ Markdown は Sätteri で処理し、`src/lib/markdown.ts` のプラグインで
 
 - `public/_headers` にセキュリティヘッダーを書き、CSP はビルド時に追記される。インライン script/style を足すと CSP のハッシュが変わるが、ビルドで再計算される。
 - `wrangler.jsonc`: 本番 Worker は `kryota.dev` のカスタムドメインのみで配信し、workers.dev と Preview URL は無効。
-- CI: main への push で `wrangler deploy`、PR では別 Worker（`kryota-dev-website-preview`）に `wrangler preview` で Preview を作り、URL をコメントする。どちらも配信前に `scripts/check-deploy-config.mjs` で成果物の Wrangler の設定を検査し（品質ゲートで依存のコードが動くため。`docs/deployment.md`）、配信後に `scripts/check-deployed-headers.mjs` でヘッダーを検査する。PR が閉じると `preview-cleanup.yml` が Preview を消す。
+- CI: main への push で `wrangler deploy`、PR では別 Worker（`kryota-dev-website-preview`）に `wrangler preview` で Preview を作り、URL をコメントする。どちらも成果物からは `dist/client` の静的なファイルだけを受け取り、Wrangler の設定はリポジトリの `wrangler.deploy.json` を `--config` で使う（品質ゲートで依存のコードが動くため。`docs/deployment.md`）。`wrangler.jsonc` を変えたら `wrangler.deploy.json` も合わせる（`tests/deploy-config.spec.ts` が検出する）。配信後に `scripts/check-deployed-headers.mjs` でヘッダーを検査する。PR が閉じると `preview-cleanup.yml` が Preview を消す。
 
 ### 依存の管理
 

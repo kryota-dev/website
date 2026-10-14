@@ -1,136 +1,54 @@
-import { spawnSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { dirname, join, resolve } from "node:path";
+import { readFileSync } from "node:fs";
 import { expect, test } from "@playwright/test";
-import {
-  configProblems,
-  redirectProblems,
-} from "../scripts/check-deploy-config.mjs";
 
-/** The redirect that @astrojs/cloudflare writes for this static site. */
-const REDIRECT = {
-  configPath: "../../dist/client/wrangler.json",
-  auxiliaryWorkers: [],
-  prerenderWorkerConfigPath: "../../dist/server/.prerender/wrangler.json",
-};
+/**
+ * The deploy jobs use this config instead of the one in the build artifact,
+ * which comes from the quality gates where dependency code runs (Issue #33).
+ */
+const DEPLOY_CONFIG = "wrangler.deploy.json";
+/** The config the developer edits; the deploy config must follow it. */
+const USER_CONFIG = "wrangler.jsonc";
+/** The config @astrojs/cloudflare generates next to the built assets. */
+const GENERATED_CONFIG = "dist/client/wrangler.json";
 
-/** A generated config of an assets-only Worker, trimmed to a few keys. */
-const CONFIG = {
-  name: "kryota-dev-website",
-  compatibility_date: "2026-10-06",
-  assets: { directory: "." },
-  build: null,
-  containers: null,
-  routes: [{ pattern: "kryota.dev", custom_domain: true }],
-};
+/** Keys that differ on purpose: the deploy config serves the built assets only. */
+const DEPLOY_ONLY = ["main", "assets"];
 
-const SCRIPT = resolve("scripts/check-deploy-config.mjs");
+const readJson = (path: string) => JSON.parse(readFileSync(path, "utf8"));
 
-const created: string[] = [];
-test.afterEach(() => {
-  for (const dir of created.splice(0)) {
-    rmSync(dir, { recursive: true, force: true });
-  }
-});
-
-/** Runs the script in a copy of the artifact's layout (path → JSON). */
-function checkArtifact(files: Record<string, unknown>) {
-  const dir = mkdtempSync(join(tmpdir(), "deploy-config-"));
-  created.push(dir);
-  for (const [path, value] of Object.entries(files)) {
-    mkdirSync(dirname(join(dir, path)), { recursive: true });
-    writeFileSync(join(dir, path), JSON.stringify(value));
-  }
-  return spawnSync(process.execPath, [SCRIPT], { cwd: dir, encoding: "utf8" });
+/** wrangler.jsonc has whole-line comments and trailing commas only. */
+function readJsonc(path: string) {
+  const text = readFileSync(path, "utf8")
+    .split("\n")
+    .filter((line) => !line.trim().startsWith("//"))
+    .join("\n")
+    .replace(/,(\s*[}\]])/g, "$1");
+  return JSON.parse(text);
 }
 
-test.describe("デプロイの設定の検査", () => {
-  test("ビルドが書く形の redirect は通る", () => {
-    expect(redirectProblems(REDIRECT)).toEqual([]);
-  });
+const without = (config: Record<string, unknown>, keys: string[]) =>
+  Object.fromEntries(
+    Object.entries(config).filter(([key]) => !keys.includes(key)),
+  );
 
-  test("redirect が別の設定を指すと失敗する", () => {
-    const problems = redirectProblems({
-      ...REDIRECT,
-      configPath: "../../dist/client/evil.json",
-    });
-    expect(problems.join("\n")).toContain("configPath");
-  });
-
-  test("redirect に auxiliaryWorkers があると失敗する", () => {
-    const problems = redirectProblems({
-      ...REDIRECT,
-      auxiliaryWorkers: [{ configPath: "../../dist/client/aux.json" }],
-    });
-    expect(problems.join("\n")).toContain("auxiliaryWorkers");
-  });
-
-  test("redirect に知らないキーがあると失敗する", () => {
-    const problems = redirectProblems({ ...REDIRECT, extra: "x" });
-    expect(problems.join("\n")).toContain("extra");
-  });
-
-  test("build と containers が null の設定は通る", () => {
-    expect(configProblems(CONFIG)).toEqual([]);
-  });
-
-  for (const key of ["build", "containers", "main"]) {
-    test(`トップレベルに ${key} があると失敗する`, () => {
-      const problems = configProblems({ ...CONFIG, [key]: { x: 1 } });
-      expect(problems.join("\n")).toContain(key);
-    });
-
-    test(`env の中に ${key} があると失敗する`, () => {
-      const problems = configProblems({
-        ...CONFIG,
-        env: { staging: { [key]: { x: 1 } } },
-      });
-      expect(problems.join("\n")).toContain(`env.staging.${key}`);
-    });
-  }
-
-  test("vars の中の同じ名前のキーは通る", () => {
-    expect(
-      configProblems({ ...CONFIG, vars: { build: "1", main: "x" } }),
-    ).toEqual([]);
-  });
-
-  test("artifact の設定に build.command を足すとデプロイを拒む", () => {
-    const result = checkArtifact({
-      ".wrangler/deploy/config.json": REDIRECT,
-      "dist/client/wrangler.json": {
-        ...CONFIG,
-        build: { command: "echo marker" },
-      },
-    });
-    expect(result.status).toBe(1);
-    expect(result.stderr).toContain("build is set");
-  });
-
-  test("prerender の設定が artifact にあれば、それも検査する", () => {
-    const result = checkArtifact({
-      ".wrangler/deploy/config.json": REDIRECT,
-      "dist/client/wrangler.json": CONFIG,
-      "dist/server/.prerender/wrangler.json": {
-        build: { command: "echo marker" },
-      },
-    });
-    expect(result.status).toBe(1);
-    expect(result.stderr).toContain(".prerender");
-  });
-
-  test("指す先の設定が無ければ失敗する", () => {
-    const result = checkArtifact({ ".wrangler/deploy/config.json": REDIRECT });
-    expect(result.status).not.toBe(0);
-  });
-
-  test("ビルドした設定は通る", () => {
-    const result = spawnSync(
-      process.execPath,
-      ["scripts/check-deploy-config.mjs"],
-      { encoding: "utf8" },
+test.describe("配信用の Wrangler の設定", () => {
+  test("wrangler.jsonc と、main と assets 以外が同じ", () => {
+    expect(without(readJson(DEPLOY_CONFIG), DEPLOY_ONLY)).toEqual(
+      without(readJsonc(USER_CONFIG), DEPLOY_ONLY),
     );
-    expect(result.status, result.stdout + result.stderr).toBe(0);
+  });
+
+  test("ビルドしたアセットだけを配信し、Worker のコードを持たない", () => {
+    const config = readJson(DEPLOY_CONFIG);
+    expect(config.assets).toEqual({ directory: "./dist/client" });
+    expect(config).not.toHaveProperty("main");
+    expect(config).not.toHaveProperty("site");
+  });
+
+  // If the adapter starts emitting a script, the deploy config would drop it.
+  test("ビルドが生成する設定も、Worker のコードを持たない", () => {
+    const generated = readJson(GENERATED_CONFIG);
+    expect(generated.main).toBeUndefined();
+    expect(generated.site).toBeUndefined();
   });
 });
