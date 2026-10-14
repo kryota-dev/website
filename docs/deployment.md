@@ -36,7 +36,7 @@ PR が閉じられると、`.github/workflows/preview-cleanup.yml` が `wrangler
 
 ### 必須チェック
 
-ruleset「main protection」で、品質ゲートのチェック `Quality / Lint, build, and quality gates` を必須にしています。名前は「入口の workflow のジョブ名（`Quality`）/ `quality.yml` のジョブ名」です。どちらかの名前を変えるときは、ruleset の必須チェックも同時に直します。直さないと、どの PR もマージできなくなります。
+ruleset「main protection」で、品質ゲートのチェック `Quality / Lint, build, and quality gates` を必須にしています。名前は「入口の workflow のジョブ名（`Quality`）/ `quality.yml` のジョブ名」です。どちらかの名前を変えるときは、ruleset の必須チェックも同時に直します。直さないと、どの PR もマージできなくなります。直すときは、必須チェックの一覧を 1 回の更新で置き換えます。旧い名前を外してから新しい名前を足すと、そのあいだ必須チェックが無くなるためです。
 
 ### Environments
 
