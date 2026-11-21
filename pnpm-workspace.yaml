@@ -12,3 +12,6 @@ allowBuilds:
   # without running these scripts.
   esbuild: false
   workerd: false
+minimumReleaseAgeExclude:
+  # Renovate security update: astro@7.4.7
+  - astro@7.4.7
